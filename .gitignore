@@ -1,0 +1,23 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# App data: uploaded documents, SQLite databases, LangGraph checkpoints
+backend/data/
+backend/models/
+*.db
+*.sqlite
+
+# Secrets
+.env
+!.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Confidential golden-set material (real SOPs, real case history) goes here, never in git
+golden/private/

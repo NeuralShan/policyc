@@ -1,0 +1,74 @@
+Source: 29 CFR 1910.147 Appendix A, Electronic Code of Federal Regulations (eCFR), version as of 2025-01-01.
+URL: https://www.ecfr.gov/current/title-29/subtitle-B/chapter-XVII/part-1910/subpart-J/section-1910.147
+Licence: US federal government work - public domain (17 U.S.C. 105). Text reproduced verbatim; blank fill-in lines omitted.
+----------------------------------------------------------------------------------------------
+
+Appendix A to § 1910.147—Typical Minimal Lockout Procedure
+
+General
+
+The following simple lockout procedure is provided to assist employers in developing their procedures so they meet the requirements of this standard. When the energy isolating devices are not lockable, tagout may be used, provided the employer complies with the provisions of the standard which require additional training and more rigorous periodic inspections. When tagout is used and the energy isolating devices are lockable, the employer must provide full employee protection (see paragraph (c)(3)) and additional training and more rigorous periodic inspections are required. For more complex systems, more comprehensive procedures may need to be developed, documented and utilized.
+
+Lockout Procedure
+
+Lockout procedure for
+
+(Name of Company for single procedure or identification of equipment if multiple procedures are used)
+
+Purpose
+
+This procedure establishes the minimum requirements for the lockout of energy isolating devices whenever maintenance or servicing is done on machines or equipment. It shall be used to ensure that the machine or equipment is stopped, isolated from all potentially hazardous energy sources and locked out before employees perform any servicing or maintenance where the unexpected energization or start-up of the machine or equipment or release of stored energy could cause injury.
+
+Compliance With This Program
+
+All employees are required to comply with the restrictions and limitations imposed upon them during the use of lockout. The authorized employees are required to perform the lockout in accordance with this procedure. All employees, upon observing a machine or piece of equipment which is locked out to perform servicing or maintenance shall not attempt to start, energize or use that machine or equipment.
+
+Type of compliance enforcement to be taken for violation of the above.
+
+Sequence of Lockout
+
+(1) Notify all affected employees that servicing or maintenance is required on a machine or equipment and that the machine or equipment must be shut down and locked out to perform the servicing or maintenance.
+
+Name(s)/Job Title(s) of affected employees and how to notify.
+
+(2) The authorized employee shall refer to the company procedure to identify the type and magnitude of the energy that the machine or equipment utilizes, shall understand the hazards of the energy, and shall know the methods to control the energy.
+
+Type(s) and magnitude(s) of energy, its hazards and the methods to control the energy.
+
+(3) If the machine or equipment is operating, shut it down by the normal stopping procedure (depress stop button, open switch, close valve, etc.).
+
+Type(s) and location(s) of machine or equipment operating controls.
+
+(4) De-activate the energy isolating device(s) so that the machine or equipment is isolated from the energy source(s).
+
+Type(s) and location(s) of energy isolating devices.
+
+(5) Lock out the energy isolating device(s) with assigned individual lock(s).
+
+(6) Stored or residual energy (such as that in capacitors, springs, elevated machine members, rotating flywheels, hydraulic systems, and air, gas, steam, or water pressure, etc.) must be dissipated or restrained by methods such as grounding, repositioning, blocking, bleeding down, etc.
+
+Type(s) of stored energy—methods to dissipate or restrain.
+
+(7) Ensure that the equipment is disconnected from the energy source(s) by first checking that no personnel are exposed, then verify the isolation of the equipment by operating the push button or other normal operating control(s) or by testing to make certain the equipment will not operate.
+
+Caution: Return operating control(s) to neutral or “off” position after verifying the isolation of the equipment.
+
+Method of verifying the isolation of the equipment.
+
+(8) The machine or equipment is now locked out.
+
+Restoring Equipment to Service. When the servicing or maintenance is completed and the machine or equipment is ready to return to normal operating condition, the following steps shall be taken.
+
+(1) Check the machine or equipment and the immediate area around the machine or equipment to ensure that nonessential items have been removed and that the machine or equipment components are operationally intact.
+
+(2) Check the work area to ensure that all employees have been safely positioned or removed from the area.
+
+(3) Verify that the controls are in neutral.
+
+(4) Remove the lockout devices and reenergize the machine or equipment.
+
+Note:
+
+The removal of some forms of blocking may require reenergization of the machine before safe removal.
+
+(5) Notify affected employees that the servicing or maintenance is completed and the machine or equipment is ready for use.

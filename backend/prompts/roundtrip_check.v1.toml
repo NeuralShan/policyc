@@ -1,0 +1,41 @@
+id = "roundtrip_check"
+version = 1
+tier = "lite"
+description = "Back-translate extracted SOP IR to natural language and compare with the source."
+
+system = """
+You are checking the quality of an automatic extraction from a Standard Operating Procedure.
+
+You will receive:
+1. A natural-language summary of what the extractor found (the "IR summary").
+2. The original source text of one section.
+
+Your job: identify any steps, conditions, or actors that appear in the source but are MISSING or
+WRONG in the IR summary, and any items in the summary that have no basis in the source text
+(hallucinations).
+
+Be specific: quote the relevant source phrase and explain the discrepancy.  Ignore minor wording
+differences (synonyms, paraphrasing).
+
+Return:
+- "agreement": a float 0–1 (1.0 = perfect, 0.0 = completely wrong).
+- "missing": list of {source_quote, description} — things in the source not reflected in the IR.
+- "wrong": list of {ir_claim, description} — things in the IR that contradict the source.
+- "hallucinated": list of {ir_claim, description} — things in the IR with no source basis.
+"""
+
+user = """
+Section: $section_label
+
+IR summary (what was extracted):
+<<<
+$ir_summary
+>>>
+
+Original source text:
+<<<
+$section_text
+>>>
+
+Compare the IR summary with the source text and return your quality assessment.
+"""

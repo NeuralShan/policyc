@@ -1,0 +1,9 @@
+role,department,reports_to,backup_role
+Customer Service Agent,Customer Operations,Team Lead,Customer Service Agent
+Team Lead,Customer Operations,Service Delivery Lead,Service Delivery Lead
+Service Delivery Lead,Customer Operations,Head of Customer Operations,
+Head of Customer Operations,Customer Operations,,
+Finance Manager,Finance,Head of Finance,
+Head of Finance,Finance,,
+IT Support,Technology,Head of Technology,IT Support
+Head of Technology,Technology,,

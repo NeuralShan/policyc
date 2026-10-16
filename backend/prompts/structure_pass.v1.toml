@@ -1,0 +1,68 @@
+id = "structure_pass"
+version = 1
+tier = "flash"
+description = "Extract the procedural flow (steps, decisions, transitions) from a SOP section."
+
+system = """
+You extract the procedural flow from a Standard Operating Procedure (SOP) section.
+
+You have been given a symbol table (roles, artifacts, systems, terms).  Use those IDs.
+
+Rules for steps:
+- "id": "s01", "s02", … (unique within this call; prefix with the section number if provided).
+- "kind": "action" | "verification" | "notification" | "approval" | "escalation" | "terminal".
+- "actor_role_id": must be an id from the symbol_table.roles list, or null if the text gives no
+  actor. Use "actor_raw" for an unrecognised actor name.
+- "modal": "shall" | "should" | "may" | "must" | "will" | "unknown". Record the exact modal verb.
+- "action": short imperative verb phrase (≤ 12 words), preserving the meaning.
+- "number": the clause or step number as printed ("4.1", "3", "a)").
+- "inputs" / "outputs": artifact ids from the symbol table.
+- "systems": system ids from the symbol table.
+- "sla": if a time limit is stated — "max_duration" (number), "unit" ("hours"/"days"/
+  "business_days"/"calendar_days"), "from_event" (default "step_start").
+  If vague ("promptly", "as soon as possible"), set "vague": true and "vague_text" to the phrase.
+- "source_quote": a short verbatim phrase (≤ 40 words) from the section text that is the best
+  evidence for this step.
+
+Rules for decisions:
+- "id": "d01", "d02", …
+- "question": the yes/no or conditional question in plain English.
+- "preceding_step_id": id of the step just before this branch.
+- "branches": each has "label", "condition", "next_step_id" ("s##" or "END").
+  Condition kinds: "always", "compare" {left, op, right}, "logical" {logical_op, operands},
+  "vague" {text}, "unknown" {raw_text}.
+  ops: "gt" "gte" "lt" "lte" "eq" "ne" "in" "not_in".
+  right values: {value_type, number?, text?, currency?, duration_unit?}.
+
+Rules for transitions:
+- Add a transition from every step that flows directly to another (no decision).
+- "from_id" and "to_id" are step ids or "END".
+
+Rules for references:
+- List every external document reference ("per SOP-FIN-012", "see Policy DP-01").
+- "ref_text": verbatim; "doc_code": the code if visible.
+
+IMPORTANT:
+- Do not invent steps or decisions not stated in the text.
+- If you are uncertain about a step, set "extraction_confidence" < 0.7 and add a "note".
+- Do not re-extract steps already seen in earlier sections (if any are listed in prior_step_ids).
+"""
+
+user = """
+Document: $filename
+Section: $section_label
+
+Symbol table:
+$symbol_table_json
+
+Prior step IDs already extracted (do not duplicate):
+$prior_step_ids
+
+Section text:
+<<<
+$section_text
+>>>
+
+Extract all steps, decisions, transitions and external references from this section.
+Return a JSON object with keys "steps", "decisions", "transitions", "references".
+"""

@@ -1,0 +1,173 @@
+{
+  "id": "sample-complaint-refund",
+  "title": "SOP-CS-014 Customer Complaint Handling and Refund Processing",
+  "synthetic": true,
+  "documents": ["SOP-CS-014.md"],
+  "context_packs": {"roles": "context/roles.csv"},
+  "case_history": ["case_history.csv"],
+  "expected_findings": [
+    {
+      "code": "ST004",
+      "document": "SOP-CS-014.md",
+      "quote": "If the refund amount is above ₹10,000, the Finance Manager approves the refund within 3 business days.",
+      "note": "Refunds from ₹5,000 to ₹10,000 inclusive have no approver.",
+      "accept_codes": ["EX001"],
+      "cases": ["C-1003"]
+    },
+    {
+      "code": "ST004",
+      "document": "SOP-CS-014.md",
+      "quote": "If the complaint is upheld and a refund is due:",
+      "note": "An upheld complaint where no refund is due has no next step.",
+      "accept_codes": ["EX001"]
+    },
+    {
+      "code": "RS004",
+      "document": "SOP-CS-014.md",
+      "quote": "the CSA who logged the complaint approves the refund",
+      "note": "The same person logs the complaint and approves its refund."
+    },
+    {
+      "code": "RS002",
+      "document": "SOP-CS-014.md",
+      "quote": "The team will verify the order details",
+      "note": "No accountable role for order verification."
+    },
+    {
+      "code": "TM003",
+      "document": "SOP-CS-014.md",
+      "quote": "The CSA responds to the customer promptly",
+      "note": "'Promptly' has no time limit."
+    },
+    {
+      "code": "TM002",
+      "document": "SOP-CS-014.md",
+      "quote": "All complaints must be resolved within 5 business days of being logged.",
+      "note": "High-value path allows 1 + 2 + 3 = 6 business days before payment is even submitted.",
+      "accept_codes": ["EX003"]
+    },
+    {
+      "code": "DF001",
+      "document": "SOP-CS-014.md",
+      "quote": "The CSA attaches the Refund Approval Form (RAF) to the complaint record",
+      "note": "The RAF is attached in step 4 but only completed in step 7."
+    },
+    {
+      "code": "ST002",
+      "document": "SOP-CS-014.md",
+      "quote": "If the payment gateway rejects the refund, notify IT Support.",
+      "note": "Nothing happens after IT Support is notified; the complaint never closes.",
+      "accept_codes": ["EX001"],
+      "cases": ["C-1004"]
+    },
+    {
+      "code": "RS001",
+      "document": "SOP-CS-014.md",
+      "quote": "If the payment gateway rejects the refund, notify IT Support.",
+      "note": "No actor named for notifying IT Support."
+    },
+    {
+      "code": "ST003",
+      "document": "SOP-CS-014.md",
+      "quote": "If the customer disputes the resolution, return to step 3.",
+      "note": "Disputes can loop forever; no limit or exit to escalation.",
+      "cases": ["C-1006"]
+    },
+    {
+      "code": "RS005",
+      "document": "SOP-CS-014.md",
+      "quote": "The Service Delivery Lead may send the complaint back to the Team Lead for rework.",
+      "note": "Escalation can cycle between Team Lead and Service Delivery Lead; no terminal authority.",
+      "cases": ["C-1008"]
+    },
+    {
+      "code": "TM004",
+      "document": "SOP-CS-014.md",
+      "quote": "If a complaint is unresolved after 48 hours, escalate it to the Service Delivery Lead.",
+      "note": "48 clock hours here vs business days everywhere else."
+    },
+    {
+      "code": "RS001",
+      "document": "SOP-CS-014.md",
+      "quote": "If a complaint is unresolved after 48 hours, escalate it to the Service Delivery Lead.",
+      "note": "Nobody owns the escalation."
+    },
+    {
+      "code": "LG002",
+      "document": "SOP-CS-014.md",
+      "quote": "The CSA should verify the customer's identity before discussing account details.",
+      "note": "'Should' on a data-protection control; reads as optional."
+    },
+    {
+      "code": "XD001",
+      "document": "SOP-CS-014.md",
+      "quote": "Refund Policy RP-02 §3.2",
+      "note": "Referenced document is not in the corpus."
+    },
+    {
+      "code": "XD001",
+      "document": "SOP-CS-014.md",
+      "quote": "Data Protection Policy DP-01",
+      "note": "Referenced document is not in the corpus."
+    },
+    {
+      "code": "RS003",
+      "document": "SOP-CS-014.md",
+      "quote": "Customer Experience Champion",
+      "note": "Role is not in the role directory (context/roles.csv)."
+    },
+    {
+      "code": "RS006",
+      "document": "SOP-CS-014.md",
+      "quote": "the Finance Manager approves the refund within 3 business days",
+      "note": "Single approver with no delegate; roles.csv lists no backup.",
+      "accept_codes": ["EX003"],
+      "cases": ["C-1005"]
+    },
+    {
+      "code": "RL001",
+      "document": "SOP-CS-014.md",
+      "quote": "The CSA should verify the customer's identity",
+      "note": "Identity verification skipped in practice.",
+      "cases": ["C-1002"]
+    },
+    {
+      "code": "RL002",
+      "note": "Undocumented Team Lead approval fills the ₹5,000–₹10,000 gap.",
+      "cases": ["C-1003"]
+    },
+    {
+      "code": "RL002",
+      "document": "SOP-CS-014.md",
+      "quote": "If the payment gateway rejects the refund, notify IT Support.",
+      "note": "Undocumented manual bank transfer used as a workaround.",
+      "cases": ["C-1004"]
+    },
+    {
+      "code": "RL003",
+      "document": "SOP-CS-014.md",
+      "quote": "All complaints must be resolved within 5 business days of being logged.",
+      "note": "Five-business-day SLA breached.",
+      "cases": ["C-1004", "C-1005", "C-1008"]
+    },
+    {
+      "code": "RL004",
+      "note": "A ₹7,500 refund follows no documented path.",
+      "cases": ["C-1003"]
+    },
+    {
+      "code": "RL005",
+      "document": "SOP-CS-014.md",
+      "quote": "If the customer disputes the resolution, return to step 3.",
+      "note": "Ombudsman complaint after repeated dispute loops.",
+      "cases": ["C-1006"]
+    },
+    {
+      "code": "RL005",
+      "document": "SOP-CS-014.md",
+      "quote": "the Finance Manager approves the refund within 3 business days",
+      "note": "Public complaint while the only approver was on leave.",
+      "cases": ["C-1005"]
+    }
+  ]
+}

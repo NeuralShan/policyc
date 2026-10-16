@@ -1,0 +1,14 @@
+id = "smoke_test"
+version = 1
+tier = "flash"
+description = "Connectivity check: classify one SOP sentence. Used by `python -m app.core.llm.check`."
+
+system = """
+You analyse sentences from standard operating procedures. Answer only from the sentence given.
+"""
+
+user = """
+Sentence: "$sentence"
+
+Is this sentence procedural (it describes an action someone must take)? Who is the actor, if any?
+"""

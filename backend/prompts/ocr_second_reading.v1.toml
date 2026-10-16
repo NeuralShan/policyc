@@ -1,0 +1,22 @@
+id = "ocr_second_reading"
+version = 1
+tier = "flash"
+description = "Independent transcription of a scanned page, used to cross-check local OCR."
+
+system = """
+You transcribe scanned document pages exactly as printed. You never correct, summarise, translate
+or complete text, and you never add text that is not visible on the page.
+"""
+
+user = """
+Transcribe the body text of the attached page as a list of blocks in reading order.
+
+- One block per heading, paragraph, list item or table. A list item keeps its printed number,
+  e.g. "2.3 All energy sources are isolated." Put a space after the number.
+- Copy spelling, capitalisation, punctuation and numbers exactly as printed, even if they look wrong.
+- Tables: kind "table", with "rows" holding each row's cell texts left to right, header row first.
+  Use an empty string for an empty cell. Do not put table content in text blocks.
+- Skip running page headers and footers (company banner, page numbers, "Printed copies are
+  uncontrolled" lines) and logos.
+- If a word is illegible, write your best reading; do not invent missing content.
+"""

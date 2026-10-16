@@ -1,0 +1,45 @@
+[project]
+name = "policy-compiler"
+version = "0.1.0"
+description = "Compiles organizational documents (SOPs, policies) into an executable IR and tests them for gaps."
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.0",
+    "docling>=2.139.0",
+    "fastapi>=0.143.2",
+    "langchain-core>=1.6.11",
+    "langchain-google-genai>=4.4.2",
+    "langgraph>=1.2.15",
+    "langgraph-checkpoint-sqlite>=3.1.2",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.0",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.1.4",
+    "networkx>=3.5",
+    "uvicorn[standard]>=0.54.0",
+    "z3-solver>=5.3.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["alembic"]  # not the local alembic/ migrations folder
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["slow: runs Docling over the golden set (minutes); select with -m slow"]
+addopts = "-m 'not slow'"

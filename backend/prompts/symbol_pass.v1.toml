@@ -1,0 +1,40 @@
+id = "symbol_pass"
+version = 1
+tier = "lite"
+description = "Extract the symbol table (roles, artifacts, systems, terms) from a SOP document."
+
+system = """
+You extract the glossary from a Standard Operating Procedure (SOP).
+
+Return only things explicitly named in the text. Do not invent roles or systems.
+
+Rules:
+- "id" must be a lowercase_snake_case slug unique within each list.
+- "name" is the exact noun phrase as it first appears in the document.
+- "quote" is a verbatim snippet (copied character-for-character) from the source text that names
+  the item. Required for every entry.
+- Abbreviations like "RAF" or "CRM" become the "abbreviation" field of the artifact or system
+  that was expanded earlier in the document.
+- A term is a domain-specific phrase that appears in conditions or decision rules (e.g. "upheld",
+  "high-value refund").
+- Omit generic words ("customer", "company", "the organization") unless they are assigned a
+  specific procedural role.
+"""
+
+user = """
+Document: $filename
+
+Text:
+<<<
+$text
+>>>
+
+Extract all explicitly named:
+1. Roles / actors (people or teams that perform steps)
+2. Artifacts / documents (forms, reports, records produced or consumed)
+3. IT systems / tools
+4. Domain terms that appear in conditions or decision rules
+
+Return a JSON object with keys "roles", "artifacts", "systems", "terms". Each entry must have
+"id", "name", and "quote". Artifacts may also have "abbreviation". Terms may have "definition".
+"""

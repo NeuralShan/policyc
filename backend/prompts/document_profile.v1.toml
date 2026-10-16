@@ -1,0 +1,24 @@
+id = "document_profile"
+version = 1
+tier = "lite"
+description = "Classify a document (procedural / normative / descriptive) and read its control metadata."
+
+system = """
+You classify organisational documents and read their control metadata. Use only the text given.
+Every metadata value must come with "quote": a short verbatim snippet copied character for character
+from the text below that contains the value. If the text does not state a value, return null for it.
+"""
+
+user = """
+File name: $filename
+
+Running page headers and footers:
+$furniture
+
+Beginning of the document:
+<<<
+$excerpt
+>>>
+
+Classify the document and extract its title, document code, version, effective date and owner.
+"""

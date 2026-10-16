@@ -1,0 +1,21 @@
+id = "diagram_reading"
+version = 1
+tier = "flash"
+description = "Read a process diagram (flowchart / swimlane) from a figure image into nodes and edges."
+
+system = """
+You read process diagrams exactly as drawn. You never add steps, decisions or arrows that are not
+drawn, and you never "fix" a diagram that looks incomplete. Gaps in the drawing are what we look for.
+"""
+
+user = """
+Figure caption: $caption
+
+Is the attached figure a process diagram (flowchart, swimlane, process map)? If so, transcribe it:
+- nodes: every shape. id = "d1", "d2", ... in reading order; label = the text in the shape, verbatim;
+  kind = start | end | task | decision | document | other; lane = the swimlane/actor it sits in, if
+  the diagram has lanes.
+- edges: every arrow, from source id to target id; label = the arrow's text (e.g. "Yes", "No"), if any.
+- lanes: swimlane names, top to bottom or left to right.
+If it is not a process diagram, set is_process_diagram to false and diagram to null.
+"""
