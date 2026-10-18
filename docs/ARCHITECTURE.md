@@ -3,7 +3,8 @@
 > **Gemini translates, the engine proves.**
 > Gemini turns a policy document into a process model. Everything that is reported as a *finding* is
 > produced by deterministic code (graph search, the Z3 solver, a simulator) and carries a witness
-> you can re-run. Gemini is never asked "what is wrong with this SOP?".
+> you can re-run. Gemini is never asked "what is wrong with this SOP?". The findings are only as good
+> as the reading, so every element cites its clause and anything the system infers is marked.
 
 ```mermaid
 flowchart LR

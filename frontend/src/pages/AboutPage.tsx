@@ -29,7 +29,7 @@ export function AboutPage() {
             <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900"><Icon name="sparkles" className="text-indigo-600" /> What Gemini does</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-700">
               Language models are excellent translators and unreliable judges. Gemini is used only to turn messy prose into a structured process model, and to draft
-              plain-English explanations and candidate rewrites. It never decides whether a procedure is correct.
+              plain-English explanations and candidate rewrites. It never decides what counts as a bug: every finding comes from the engine. Because findings are only as good as the reading, every element cites its clause and anything inferred is marked.
             </p>
           </div>
           <div>

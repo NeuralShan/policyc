@@ -79,6 +79,9 @@ What PolicyC adds over "ask a chatbot to review it":
   cross-checked by Gemini vision; the extraction is round-trip checked.
 * **Honest**: the normaliser never fixes the SOP. A clause nothing triggers stays unreachable, a
   hand-off to a missing section stays a dead end. Anything it infers is shown dashed as *inferred*.
+* **Precise about the model's role**: Gemini reads the document and never decides what is a bug; every finding comes
+  from deterministic checks. Findings are only as good as the reading, which is why every element cites its clause
+  and everything inferred is marked.
 * **Comparable**: stable fingerprints make "fixed / new / remaining" meaningful across revisions.
 * **Beyond the document**: upload real case history and measure conformance (Reality Check).
 

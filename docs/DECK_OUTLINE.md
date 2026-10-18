@@ -14,7 +14,9 @@ from the deployed app (home, workspace, fix dialog, trace) rather than mock-ups.
 4. **The idea.** Treat the SOP like source code: compile → analyse → test → explain → fix → recompile.
    Pipeline graphic (docs/ARCHITECTURE.md): Lexer (ingest) → Parser (extract) → Linker → Type checker
    (static analysis) → Test suite → Runtime (simulator) → Profiler (reality check) → Diagnostics.
-5. **Core principle: "Gemini translates, the engine proves."** Two-column table (Gemini: language →
+5. **Core principle: "Gemini translates, the engine proves."** Say it precisely: Gemini reads the
+   document and never decides what is a bug; every finding comes from deterministic checks with a witness.
+   Be candid that findings are only as good as the reading (hence the clause citations and the *inferred* marks). Two-column table (Gemini: language →
    model, vision cross-check, explain, patch / Engine: reachability, Z3 coverage and overlap,
    segregation of duties, deadline arithmetic, simulation).
 6. **Demo: problems → proof.** Workspace screenshot: document ↔ flowchart ↔ problems; the

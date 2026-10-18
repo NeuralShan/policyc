@@ -176,7 +176,7 @@ export function HomePage() {
         <div className="text-center">
           <h2 id="how" className="text-2xl font-bold tracking-tight text-slate-900">How it works</h2>
           <p className="mt-2 text-slate-600">
-            <em className="not-italic font-semibold text-indigo-700">Gemini translates, the engine proves.</em> The model never decides whether your procedure is correct.
+            <em className="not-italic font-semibold text-indigo-700">Gemini translates, the engine proves.</em> The model reads your procedure; the engine decides whether it is correct, and shows the proof.
           </p>
         </div>
         <ol className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
