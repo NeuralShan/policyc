@@ -1,0 +1,11 @@
+{
+ "id": "expense",
+ "title": "Employee Expense Reimbursement Policy",
+ "doc_code": "EXP-001",
+ "industry": "Banking / corporate finance operations",
+ "language": "en",
+ "description": "Claims below and above INR 10,000 leave a gap at exactly 10,000, two rules conflict for managers and the Finance Head, and the Finance Head cannot approve their own claim.",
+ "planted_bugs": 7,
+ "file": "EXP-001_Employee_Expense_Reimbursement_Policy_v3.0.pdf",
+ "text_file": "sop.md"
+}

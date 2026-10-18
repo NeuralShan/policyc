@@ -53,12 +53,12 @@ function ProcessSection({
         <span className="flex items-center gap-2">
           <Badge tone="blue">{proc.type}</Badge>
           {proc.data.label}
-          <Mono className="text-xs text-slate-400">{proc.id}</Mono>
+          <Mono className="text-xs text-slate-500">{proc.id}</Mono>
         </span>
       }
     >
       {children.length === 0 ? (
-        <p className="text-sm text-slate-400 italic">No steps or decisions.</p>
+        <p className="text-sm text-slate-500 italic">No steps or decisions.</p>
       ) : (
         <div className="space-y-2">
           {children.map((child) => (
@@ -109,7 +109,7 @@ export function GraphPage() {
         }
         actions={
           <Link to={`/runs/${runId}`} className="text-sm text-slate-600 hover:text-slate-900">
-            ← Run
+             Run
           </Link>
         }
       />

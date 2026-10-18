@@ -54,6 +54,7 @@ _CODES: list[tuple[str, str, Severity, int, DetectionTier]] = [
     ("ST005", "Decision branches overlap", _E, 4, _D),
     ("ST006", "Process has no trigger or entry criteria", _W, 4, _D),
     ("ST007", "Process has no defined terminal outcome", _E, 4, _D),
+    ("ST008", "Mandatory step can be bypassed", _E, 4, _D),
     ("RS001", "Step has no owner", _E, 4, _D),
     ("RS002", "Vague owner (e.g. 'the team', 'relevant authority')", _W, 4, _D),
     ("RS003", "Role not found in the organisation's role directory", _W, 4, _D),

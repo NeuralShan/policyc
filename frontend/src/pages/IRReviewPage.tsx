@@ -95,7 +95,7 @@ function DecisionCard({ decision }: { decision: IrDecision }) {
         {decision.branches.map((b, i) => (
           <li key={i} className="flex items-center gap-2 text-sm text-slate-700">
             <span className="font-medium">{b.label}</span>
-            <span className="text-slate-400">→</span>
+            <span className="text-slate-500">→</span>
             <Mono className="text-xs">{b.next_step_id}</Mono>
           </li>
         ))}
@@ -231,7 +231,7 @@ export function IRReviewPage() {
         }
         actions={
           <Link to={`/runs/${runId}`} className="text-sm text-slate-600 hover:text-slate-900">
-            ← Run
+             Run
           </Link>
         }
       />

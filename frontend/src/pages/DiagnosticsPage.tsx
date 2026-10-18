@@ -78,7 +78,7 @@ function GroupedDiagnostics({ diagnostics }: { diagnostics: Diagnostic[] }) {
   }
   if (diagnostics.length === 0) {
     return (
-      <p className="text-sm text-slate-400 italic">No diagnostics — the SOP looks clean.</p>
+      <p className="text-sm text-slate-500 italic">No diagnostics — the SOP looks clean.</p>
     );
   }
   return (
@@ -122,7 +122,7 @@ export function DiagnosticsPage() {
             to={`/runs/${runId}`}
             className="text-sm text-slate-600 hover:text-slate-900"
           >
-            ← Run
+             Run
           </Link>
         }
       />
@@ -155,7 +155,7 @@ export function DiagnosticsPage() {
 
       <Card title={`Diagnostics (${report?.diagnostics.length ?? 0})`}>
         {query.isLoading ? (
-          <p className="text-sm text-slate-400">Loading…</p>
+          <p className="text-sm text-slate-500">Loading…</p>
         ) : (
           <GroupedDiagnostics diagnostics={report?.diagnostics ?? []} />
         )}

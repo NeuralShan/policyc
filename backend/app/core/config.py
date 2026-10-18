@@ -1,11 +1,13 @@
 """Application settings, loaded from environment variables (prefix ``PC_``) or ``backend/.env``."""
 
+import json
 from enum import StrEnum
 from functools import cached_property
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BeforeValidator, SecretStr
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
@@ -21,6 +23,16 @@ class LLMCacheMode(StrEnum):
     REPLAY = "replay"  # cache only; a miss is an error (deterministic CI)
 
 
+def _parse_origins(value: object) -> object:
+    """Accepts a JSON list or a comma-separated string (env var friendly)."""
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("["):
+            return json.loads(text)
+        return [part.strip().rstrip("/") for part in text.split(",") if part.strip()]
+    return value
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="PC_", env_file=BACKEND_DIR / ".env", env_file_encoding="utf-8", extra="ignore"
@@ -31,8 +43,17 @@ class Settings(BaseSettings):
     database_url: str | None = None  # defaults to SQLite inside data_dir
     checkpoint_path: Path | None = None  # LangGraph checkpoints; defaults to data_dir
     auto_migrate: bool = True
+    seed_demo: bool = True  # load the bundled precomputed sample projects on startup
     max_upload_mb: int = 50
-    cors_origins: list[str] = ["http://localhost:5173"]
+    # PC_CORS_ORIGINS: JSON list or comma-separated; PC_CORS_ORIGIN_REGEX: optional extra pattern
+    cors_origins: Annotated[list[str], NoDecode, BeforeValidator(_parse_origins)] = [
+        "http://localhost:5173"
+    ]
+    cors_origin_regex: str | None = None
+    serve_ui: bool | None = None  # PC_SERVE_UI; None = serve frontend/dist when it exists
+
+    # Optional Firebase Auth. Unset = auth disabled (everything is open, as in local dev).
+    firebase_project_id: str | None = None  # PC_FIREBASE_PROJECT_ID
     executor_workers: int = 2
 
     gemini_backend: GeminiBackend = GeminiBackend.VERTEX

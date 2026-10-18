@@ -132,7 +132,7 @@ function PdfPage({ pdf, pageNo, scale, height, boxes, selectedId, onSelect }: {
           />
         );
       })}
-      <span className="absolute right-2 bottom-1 text-xs text-slate-400">page {pageNo}</span>
+      <span className="absolute right-2 bottom-1 text-xs text-slate-500">page {pageNo}</span>
     </div>
   );
 }

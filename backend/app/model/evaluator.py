@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from app.logic import norm_text, normalize_op
 from app.schemas.ir_sop import (
     AlwaysCondition,
     CompareCondition,
@@ -58,7 +59,8 @@ def _eval_compare(expr: CompareCondition, facts: dict[str, Any]) -> EvalResult:
         return "unknown"
 
     rv = expr.right
-    op_fn = _OPS.get(expr.op)
+    op = normalize_op(expr.op)
+    op_fn = _OPS.get(op) if op else None
     if op_fn is None:
         return "unknown"
 
@@ -76,10 +78,10 @@ def _eval_compare(expr: CompareCondition, facts: dict[str, Any]) -> EvalResult:
         if rv.value_type in (ValueType.ENUM, ValueType.DATE):
             if rv.text is None:
                 return "unknown"
-            if expr.op == "eq":
-                return _r(str(lhs) == rv.text)
-            if expr.op == "ne":
-                return _r(str(lhs) != rv.text)
+            if op == "eq":
+                return _r(norm_text(lhs) == norm_text(rv.text))
+            if op == "ne":
+                return _r(norm_text(lhs) != norm_text(rv.text))
             return "unknown"
     except (TypeError, ValueError):
         return "unknown"

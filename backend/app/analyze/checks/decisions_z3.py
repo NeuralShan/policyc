@@ -1,10 +1,12 @@
 """ST004 / ST005 — Decision branch checks using Z3.
 
-ST004  decision missing a branch (branches < 2, or Z3 finds un-covered input)
+ST004  decision missing a branch (fewer than 2 branches, or Z3 finds an input no branch covers)
 ST005  overlapping branches (Z3 finds an input satisfying two branches simultaneously)
 
-Z3 is used only when all branch conditions are CompareConditions on numeric types.
-VagueCondition/UnknownCondition blocks Z3 and falls back to a count-only check.
+Branch conditions over numbers, booleans and enum-like values are modelled exactly (see
+``app.logic``).  An "otherwise" (``always``) branch is the complement of the other branches, so it
+never overlaps them and it makes the decision exhaustive.  A vague/unknown condition cannot be
+proved either way, so the decision is skipped rather than reported falsely.
 """
 
 from __future__ import annotations
@@ -14,69 +16,19 @@ import logging
 import z3
 
 from app.analyze.registry import register
+from app.logic import ConstraintBuilder, describe_condition, display_value, same_outcome
 from app.schemas.finding import CheckTier, Diagnostic, Severity
 from app.schemas.graph import LinkedIR
-from app.schemas.ir_sop import (
-    AlwaysCondition,
-    CompareCondition,
-    ConditionExpr,
-    Decision,
-    LogicalCondition,
-    SopIR,
-    UnknownCondition,
-    VagueCondition,
-    ValueType,
-)
+from app.schemas.ir_sop import AlwaysCondition, Decision, Process, SopIR
 
 log = logging.getLogger(__name__)
 
-_OP_MAP = {
-    "eq": lambda a, b: a == b,
-    "ne": lambda a, b: a != b,
-    "lt": lambda a, b: a < b,
-    "le": lambda a, b: a <= b,
-    "gt": lambda a, b: a > b,
-    "ge": lambda a, b: a >= b,
-}
+
+def _readable(facts: dict) -> str:
+    return ", ".join(f"{k} = {display_value(v)}" for k, v in sorted(facts.items()))
 
 
-def _to_z3(
-    expr: ConditionExpr,
-    vars_cache: dict[str, z3.ArithRef],
-) -> z3.BoolRef | None:
-    """Convert a ConditionExpr to a Z3 formula. Returns None when un-translatable."""
-    if isinstance(expr, AlwaysCondition):
-        return z3.BoolVal(True)
-    if isinstance(expr, (VagueCondition, UnknownCondition)):
-        return None  # can't model
-    if isinstance(expr, CompareCondition):
-        rv = expr.right
-        if rv.value_type not in (ValueType.NUMBER, ValueType.MONEY, ValueType.DURATION):
-            return None
-        num = rv.number
-        if num is None:
-            return None
-        if expr.left not in vars_cache:
-            vars_cache[expr.left] = z3.Real(expr.left)
-        lhs = vars_cache[expr.left]
-        op_fn = _OP_MAP.get(expr.op)
-        if op_fn is None:
-            return None
-        return op_fn(lhs, num)
-    if isinstance(expr, LogicalCondition):
-        sub_formulas = [_to_z3(op, vars_cache) for op in expr.operands]
-        if any(f is None for f in sub_formulas):
-            return None
-        if expr.logical_op == "and":
-            return z3.And(*sub_formulas)
-        if expr.logical_op == "or":
-            return z3.Or(*sub_formulas)
-        if expr.logical_op == "not" and len(sub_formulas) == 1:
-            return z3.Not(sub_formulas[0])
-    return None
-
-
-def _check_decision(dec: Decision, proc_id: str) -> list[Diagnostic]:
+def _check_decision(dec: Decision, proc_id: str, proc: Process | None = None) -> list[Diagnostic]:
     diags: list[Diagnostic] = []
 
     # ST004 — fewer than 2 branches
@@ -95,70 +47,106 @@ def _check_decision(dec: Decision, proc_id: str) -> list[Diagnostic]:
                 check_tier=CheckTier.DETERMINISTIC,
             )
         )
-        return diags  # no point running Z3 with <2 branches
-
-    # Attempt Z3 translation
-    vars_cache: dict[str, z3.ArithRef] = {}
-    formulas: list[z3.BoolRef | None] = [
-        _to_z3(b.condition, vars_cache) for b in dec.branches
-    ]
-
-    if any(f is None for f in formulas):
-        # At least one branch can't be modelled — skip Z3 but log
-        log.debug(
-            "decision %s: skipping Z3 (un-translatable condition in one or more branches)",
-            dec.id,
-        )
         return diags
 
-    typed_formulas: list[z3.BoolRef] = formulas  # type: ignore[assignment]
+    builder = ConstraintBuilder()
+    for b in dec.branches:
+        builder.scan(b.condition)
 
-    # ST005 — overlapping branches: ∃ input satisfying bi ∧ bj (i ≠ j)
-    for i in range(len(typed_formulas)):
-        for j in range(i + 1, len(typed_formulas)):
+    explicit: list[tuple[int, z3.BoolRef]] = []
+    always_idx: list[int] = []
+    for i, b in enumerate(dec.branches):
+        if isinstance(b.condition, AlwaysCondition):
+            always_idx.append(i)
+            continue
+        f = builder.formula(b.condition)
+        if f is None:
+            log.debug("decision %s: skipping Z3 (un-translatable branch %r)", dec.id, b.label)
+            return diags
+        explicit.append((i, f))
+
+    domain = builder.domain()
+
+    # ST005 — two or more unconditional branches contradict each other
+    if len(always_idx) > 1:
+        labels = [dec.branches[i].label for i in always_idx]
+        diags.append(
+            Diagnostic(
+                code="ST005",
+                severity=Severity.ERROR,
+                message=(
+                    f"Decision '{dec.id}' ('{dec.question}'): branches {labels} are all "
+                    "unconditional, so every case matches all of them"
+                ),
+                process_id=proc_id,
+                decision_id=dec.id,
+                source_spans=dec.source_spans,
+                evidence={"branches": labels},
+                check_tier=CheckTier.DETERMINISTIC,
+            )
+        )
+
+    # ST005 — overlapping explicit branches: ∃ input satisfying bi ∧ bj
+    for a in range(len(explicit)):
+        for c in range(a + 1, len(explicit)):
+            (i, fi), (j, fj) = explicit[a], explicit[c]
+            if same_outcome(proc, dec.branches[i].next_step_id, dec.branches[j].next_step_id):
+                continue  # redundant rules agreeing on the outcome are not a conflict
             s = z3.Solver()
-            s.add(z3.And(typed_formulas[i], typed_formulas[j]))
+            s.add(*domain, fi, fj)
             if s.check() == z3.sat:
-                model = s.model()
-                example = {str(d): str(model[d]) for d in model.decls()}
+                facts = builder.facts(s.model())
+                bi, bj = dec.branches[i], dec.branches[j]
                 diags.append(
                     Diagnostic(
                         code="ST005",
                         severity=Severity.ERROR,
                         message=(
-                            f"Decision '{dec.id}': branch '{dec.branches[i].label}' and "
-                            f"branch '{dec.branches[j].label}' overlap "
-                            f"(both satisfiable simultaneously)"
+                            f"Decision '{dec.id}': branch '{bi.label}' "
+                            f"({describe_condition(bi.condition)}) and branch '{bj.label}' "
+                            f"({describe_condition(bj.condition)}) overlap — e.g. when "
+                            f"{_readable(facts)} both apply"
                         ),
                         process_id=proc_id,
                         decision_id=dec.id,
                         source_spans=dec.source_spans,
-                        evidence={"counterexample": example},
+                        evidence={
+                            "counterexample": facts,
+                            "branches": [bi.label, bj.label],
+                            "conditions": [
+                                describe_condition(bi.condition),
+                                describe_condition(bj.condition),
+                            ],
+                            "targets": [bi.next_step_id, bj.next_step_id],
+                        },
                         check_tier=CheckTier.DETERMINISTIC,
                     )
                 )
 
-    # ST004 — non-exhaustive: ¬(b1 ∨ b2 ∨ … ∨ bn) is satisfiable
-    s = z3.Solver()
-    s.add(z3.Not(z3.Or(*typed_formulas)))
-    if s.check() == z3.sat:
-        model = s.model()
-        example = {str(d): str(model[d]) for d in model.decls()}
-        diags.append(
-            Diagnostic(
-                code="ST004",
-                severity=Severity.ERROR,
-                message=(
-                    f"Decision '{dec.id}' ('{dec.question}') is non-exhaustive: "
-                    "there exist inputs not covered by any branch"
-                ),
-                process_id=proc_id,
-                decision_id=dec.id,
-                source_spans=dec.source_spans,
-                evidence={"counterexample": example},
-                check_tier=CheckTier.DETERMINISTIC,
+    # ST004 — non-exhaustive: ¬(b1 ∨ … ∨ bn) satisfiable (an "otherwise" branch closes the gap)
+    if explicit and not always_idx:
+        s = z3.Solver()
+        s.add(*domain, z3.Not(z3.Or(*[f for _, f in explicit])))
+        if s.check() == z3.sat:
+            facts = builder.facts(s.model())
+            diags.append(
+                Diagnostic(
+                    code="ST004",
+                    severity=Severity.ERROR,
+                    message=(
+                        f"Decision '{dec.id}' ('{dec.question}') is non-exhaustive: "
+                        f"no branch applies when {_readable(facts)}"
+                    ),
+                    process_id=proc_id,
+                    decision_id=dec.id,
+                    source_spans=dec.source_spans,
+                    evidence={
+                        "counterexample": facts,
+                        "conditions": [describe_condition(b.condition) for b in dec.branches],
+                    },
+                    check_tier=CheckTier.DETERMINISTIC,
+                )
             )
-        )
 
     return diags
 
@@ -168,5 +156,5 @@ def decision_checks(ir: SopIR, _linked: LinkedIR | None) -> list[Diagnostic]:
     diags: list[Diagnostic] = []
     for proc in ir.processes:
         for dec in proc.decisions:
-            diags.extend(_check_decision(dec, proc.id))
+            diags.extend(_check_decision(dec, proc.id, proc))
     return diags

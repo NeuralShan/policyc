@@ -1,0 +1,78 @@
+{
+  "id": "dispute",
+  "docNo": "DSP-004",
+  "title": "Card Transaction Dispute and Chargeback Procedure",
+  "language": "en",
+  "domain": "Fintech / payments customer operations",
+  "organisation": "PT Nusantara Digital Payments (PayNusa)",
+  "specSection": null,
+  "files": {
+    "text": "sop.md",
+    "pdf": "DSP-004_Card_Dispute_and_Chargeback_Procedure_v2.0.pdf",
+    "docx": "DSP-004_Card_Dispute_and_Chargeback_Procedure_v2.0.docx"
+  },
+  "totals": {
+    "errors": 4,
+    "warnings": 3,
+    "info": 0
+  },
+  "planted": [
+    {
+      "code": "E105",
+      "clauses": [
+        "C4.2"
+      ],
+      "bug": "Incomplete evidence loops back to the same review with nothing that changes the evidence and no cap or timeout for a customer who never responds",
+      "witness": "evidence_complete=false"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C5.1",
+        "C5.3"
+      ],
+      "bug": "A suspected-fraud dispute of IDR 2,000,000 or less matches both C5.1 (provisional credit) and C5.3 (fraud unit)",
+      "witness": "amount=2000000, suspected_fraud=true"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C5.2",
+        "C5.3"
+      ],
+      "bug": "A suspected-fraud dispute above IDR 2,000,000 matches both C5.2 (supervisor) and C5.3 (fraud unit)",
+      "witness": "amount=2000001, suspected_fraud=true"
+    },
+    {
+      "code": "E107",
+      "clauses": [
+        "C5.5"
+      ],
+      "bug": "Fraud investigation has no defined outcome (Annex C was removed), so the case dead-ends"
+    },
+    {
+      "code": "W207",
+      "clauses": [
+        "C5.5"
+      ],
+      "bug": "Reference to non-existent Annex C"
+    },
+    {
+      "code": "W204",
+      "clauses": [
+        "C6.1",
+        "C6.2",
+        "C6.3"
+      ],
+      "bug": "10 + 5 working days (360h) > 14 calendar days (336h) on the chargeback path"
+    },
+    {
+      "code": "W201",
+      "clauses": [
+        "C7.1"
+      ],
+      "bug": "'in a timely manner'"
+    }
+  ],
+  "notes": "Intake (C3.2/C3.3: more than 120 vs within 120) and amount bands (C5.1/C5.2: 'or less' vs 'above') are deliberately gap-free: a finding there is a false positive."
+}

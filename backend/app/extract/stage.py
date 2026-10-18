@@ -11,7 +11,7 @@ from langgraph.types import interrupt
 
 from app.core.llm.gateway import CallContext
 from app.extract.service import get_extractor
-from app.models import DocumentAST, SopIRRecord
+from app.models import CompileRun, DocumentAST, SopIRRecord
 from app.pipeline.graph import CompileState, StageContext
 from app.schemas.docast import DocAST
 from app.schemas.ir_sop import ReviewStatus
@@ -71,7 +71,28 @@ def run_extract(state: CompileState, ctx: StageContext) -> dict[str, Any]:
             ctx.report(msg)
 
         ctx.report(f"extracting from {len(asts)} document(s)")
-        ir = extractor.extract(asts, ctx.run_id, context, progress)
+        base_ir = None
+        with ctx.services.sessions() as session:
+            run_row = session.get(CompileRun, ctx.run_id)
+            base_run_id = run_row.base_run_id if run_row else None
+        if base_run_id:
+            base_ir = extractor.load(base_run_id)  # incremental recompile of a revision
+        ir = extractor.extract(asts, ctx.run_id, context, progress, base_ir=base_ir)
+        if not any(p.steps for p in ir.processes):
+            raise RuntimeError(
+                "No procedure steps were found in the document. PolicyC compiles procedures and "
+                "policies (who does what, in which order, under which conditions); this text "
+                "looks purely descriptive."
+            )
+        failed = [w for w in ir.warnings if w.code == "structure_pass_failed"]
+        if failed:
+            # A section that could not be read would silently disappear from the model, and every
+            # downstream result (including a "fixed" diff) would be misleading: stop instead.
+            raise RuntimeError(
+                f"Extraction failed for {len(failed)} section(s) ({failed[0].message}). "
+                "Nothing was analysed, because partial results would be misleading. "
+                "Re-run once the model is available."
+            )
         existing_record = extractor.save(ir)
         stats = ir.extraction_stats
     else:
@@ -85,8 +106,9 @@ def run_extract(state: CompileState, ctx: StageContext) -> dict[str, Any]:
     record = existing_record
     ir_warnings = record.ir.get("warnings", [])
 
-    # Pause for human review.  The graph will resume with the reviewer's decision.
-    review_decision: dict = interrupt(
+    # Pause for human review unless the run was started with auto_approve.
+    # The graph resumes with the reviewer's decision.
+    review_decision: dict = {"approved": True, "overrides": {}} if state.get("auto_approve") else interrupt(
         {
             "ir_id": record.id,
             "run_id": ctx.run_id,

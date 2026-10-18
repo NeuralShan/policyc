@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.analyze.service import get_analyzer
 from app.api.deps import ExecutorDep, ProjectDep, RunDep, RunIdDep, ServicesDep, SessionDep
+from app.api.insight import ReadRun
 from app.core.services import Services
 from app.findings.service import get_findings_service
 from app.link.service import get_linker
@@ -47,7 +48,15 @@ def start_run(
     if not document_ids:
         raise HTTPException(422, "upload at least one document before compiling")
 
-    run = CompileRun(project_id=project.id, document_ids=document_ids)
+    if body.base_run_id is not None and session.get(CompileRun, body.base_run_id) is None:
+        raise HTTPException(422, f"base run {body.base_run_id} not found")
+    run = CompileRun(
+        project_id=project.id,
+        document_ids=document_ids,
+        auto_approve=body.auto_approve,
+        base_run_id=body.base_run_id,
+        note="Replay of an earlier extraction" if body.base_run_id else None,
+    )
     session.add(run)
     session.commit()
     executor.submit(run.id)
@@ -202,8 +211,10 @@ class SimulateRequest(BaseModel):
 
 
 @router.post("/runs/{run_id}/simulate", status_code=201)
-def simulate_run(run: RunDep, body: SimulateRequest, services: ServicesDep) -> dict[str, Any]:
-    """Run the process simulator with the given scenario and return the trace."""
+def simulate_run(run: ReadRun, body: SimulateRequest, services: ServicesDep) -> dict[str, Any]:
+    """Run the process simulator with the given scenario and return the trace.
+
+    Simulating only reads the model, so it is allowed on read-only demo runs too."""
     from app.schemas.trace import Scenario
 
     sim = get_simulator(services)

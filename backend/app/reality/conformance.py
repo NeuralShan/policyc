@@ -52,23 +52,21 @@ def _ordered_step_ids(proc: Process) -> list[str]:
     At decisions, all branches are included in the order they appear (depth-first).
     This gives an ordered 'expected' sequence for greedy matching.
     """
-    # Build adjacency: step_id → next step_ids (from transitions + decision branches)
-    adj: dict[str, list[str]] = {s.id: [] for s in proc.steps}
+    # Build adjacency over steps AND decisions: node_id → next node ids.
+    on_flow = [s.id for s in proc.steps if not s.off_flow]
+    adj: dict[str, list[str]] = {sid: [] for sid in on_flow}
     for t in proc.transitions:
         adj.setdefault(t.from_id, []).append(t.to_id)
     for dec in proc.decisions:
+        if dec.preceding_step_id:
+            adj.setdefault(dec.preceding_step_id, []).append(dec.id)
         for branch in dec.branches:
             if branch.next_step_id:
-                adj.setdefault(dec.preceding_step_id, []).append(branch.next_step_id)
+                adj.setdefault(dec.id, []).append(branch.next_step_id)
 
-    # Find start step (no incoming edges)
-    all_ids = {s.id for s in proc.steps}
-    targets = {nid for nexts in adj.values() for nid in nexts}
-    starts = all_ids - targets
-    if not starts:
-        return [s.id for s in proc.steps]  # cycle: fall back to declaration order
-
-    start = next(iter(starts))
+    start = proc.entry()
+    if start is None:
+        return on_flow
     visited: list[str] = []
     seen: set[str] = set()
 
@@ -81,11 +79,11 @@ def _ordered_step_ids(proc: Process) -> list[str]:
             dfs(nxt)
 
     dfs(start)
+    step_ids = set(on_flow)
+    ordered = [n for n in visited if n in step_ids]
     # Add any steps not reachable from start (disconnected sub-processes)
-    for s in proc.steps:
-        if s.id not in seen:
-            visited.append(s.id)
-    return visited
+    ordered.extend(sid for sid in on_flow if sid not in seen)
+    return ordered
 
 
 def _replay_case(

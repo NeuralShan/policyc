@@ -1,0 +1,11 @@
+{
+ "id": "access",
+ "title": "User Access Request and Provisioning Procedure",
+ "doc_code": "IAM-005",
+ "industry": "IT / information security (enterprise)",
+ "language": "en",
+ "description": "Access approval rules overlap, a mandatory control can be bypassed, and a step is unreachable.",
+ "planted_bugs": 6,
+ "file": "IAM-005_User_Access_Request_and_Provisioning_Procedure_v4.2.pdf",
+ "text_file": "sop.md"
+}

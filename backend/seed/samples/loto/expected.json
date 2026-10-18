@@ -1,0 +1,38 @@
+{
+  "id": "loto",
+  "docNo": "LOTO-003",
+  "title": "Lockout/Tagout Procedure for Machine Maintenance",
+  "language": "en",
+  "domain": "Manufacturing safety",
+  "organisation": "Hoshino Precision Manufacturing Co., Ltd.",
+  "specSection": "16.3",
+  "files": {
+    "text": "sop.md",
+    "pdf": "LOTO-003_Lockout_Tagout_Procedure_v2.1.pdf",
+    "docx": "LOTO-003_Lockout_Tagout_Procedure_v2.1.docx"
+  },
+  "totals": {
+    "errors": 1,
+    "warnings": 1,
+    "info": 0
+  },
+  "planted": [
+    {
+      "code": "E108",
+      "clauses": [
+        "C2.5",
+        "C2.7",
+        "C3.1"
+      ],
+      "bug": "Exception clause lets maintenance start without zero-energy verification",
+      "witness": "task_duration_minutes=9, path S1 -> S2 -> S6"
+    },
+    {
+      "code": "W201",
+      "clauses": [
+        "C4.3"
+      ],
+      "bug": "'as soon as possible'"
+    }
+  ]
+}

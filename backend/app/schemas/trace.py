@@ -100,4 +100,5 @@ class ExecutionTrace(BaseModel):
     sla_breaches: int = 0
     actor_unavailable_count: int = 0
     system_down_count: int = 0
+    violations: list[str] = Field(default_factory=list)  # broken ordering rules, e.g. 'must_precede'
     created_at: datetime | None = None

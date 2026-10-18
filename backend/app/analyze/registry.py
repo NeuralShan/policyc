@@ -40,6 +40,7 @@ def register(code_prefix: str, label: str, tier: str = "deterministic"):
 def all_checks() -> list[Check]:
     # Import side-effectfully to trigger @register decorators
     from app.analyze.checks import (  # noqa: F401
+        rules,  # first: later modules with the same prefix stay the 'primary' check
         dataflow,
         decisions_z3,
         language,

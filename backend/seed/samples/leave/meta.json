@@ -1,0 +1,11 @@
+{
+ "id": "leave",
+ "title": "Annual Leave Request Procedure",
+ "doc_code": "LVE-008",
+ "industry": "Human resources (clean control document)",
+ "language": "en",
+ "description": "Clean control: a well-formed procedure. Any error reported here would be a false positive.",
+ "planted_bugs": 0,
+ "file": "LVE-008_Annual_Leave_Request_Procedure_v2.0.pdf",
+ "text_file": "sop.md"
+}

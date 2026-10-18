@@ -18,6 +18,7 @@ from app.schemas.findings import (
     RiskScore,
 )
 from app.schemas.reality import RealityReport
+from app.schemas.taxonomy import TAXONOMY
 from app.schemas.testrun import FailReason, TestRunReport
 
 # Map FailReason → gap code
@@ -26,6 +27,7 @@ _FAIL_REASON_CODE: dict[FailReason, str] = {
     FailReason.SLA_BREACH: "EX003",
     FailReason.ACTOR_UNAVAILABLE: "RS006",
     FailReason.EXPECTED_OUTCOME_MISMATCH: "EX001",
+    FailReason.ORDER_VIOLATION: "ST008",
 }
 
 _FAIL_REASON_TITLE: dict[FailReason, str] = {
@@ -33,6 +35,7 @@ _FAIL_REASON_TITLE: dict[FailReason, str] = {
     FailReason.SLA_BREACH: "SLA breach in execution",
     FailReason.ACTOR_UNAVAILABLE: "No backup when actor is unavailable",
     FailReason.EXPECTED_OUTCOME_MISMATCH: "Process outcome differs from expectation",
+    FailReason.ORDER_VIOLATION: "Mandatory step skipped",
 }
 
 _SEVERITY_IMPACT: dict[str, float] = {
@@ -48,6 +51,19 @@ _RL_IMPACT: dict[str, float] = {
     "RL004": 4.0,   # real cases with no documented path
     "RL005": 4.5,   # complaint traced to clause (highest impact)
 }
+
+def _decision_key(diag) -> str | None:
+    """Overlapping rule pairs in one decision are separate findings (one per pair)."""
+    if diag.code == "ST005" and diag.decision_id:
+        pair = diag.evidence.get("branches")
+        if isinstance(pair, list) and pair:
+            return f"{diag.decision_id}::{'|'.join(map(str, pair))}"
+    return diag.decision_id
+
+
+def _facts_text(facts: dict) -> str:
+    return ", ".join(f"{k} = {v}" for k, v in sorted(facts.items()))
+
 
 _CODE_TITLE: dict[str, str] = {
     "EX001": "Undetermined execution outcome",
@@ -75,7 +91,7 @@ def _new_finding(
     likelihood: float,
     impact: float,
 ) -> AggregatedFinding:
-    title = _CODE_TITLE.get(code, code)
+    title = _CODE_TITLE.get(code) or (TAXONOMY[code].title if code in TAXONOMY else code)
     return AggregatedFinding(
         id=f"fnd_{uuid.uuid4().hex[:12]}",
         code=code,
@@ -106,7 +122,8 @@ def aggregate(
     # ── Layer 4 diagnostics ─────────────────────────────────────────────────
     if diagnostics:
         for diag in diagnostics.diagnostics:
-            key: _ClusterKey = (diag.code, diag.step_id, diag.decision_id)
+            key: _ClusterKey = (diag.code, diag.step_id, _decision_key(diag))
+            span = diag.source_spans[0] if diag.source_spans else None
             ev = EvidenceItem(
                 kind="diagnostic",
                 code=diag.code,
@@ -114,6 +131,11 @@ def aggregate(
                 process_id=diag.process_id,
                 step_id=diag.step_id,
                 decision_id=diag.decision_id,
+                data=dict(diag.evidence),
+                source_quote=span.quote if span else None,
+                document_id=span.document_id if span else None,
+                char_start=span.char_start if span else None,
+                char_end=span.char_end if span else None,
             )
             if key not in cluster:
                 impact = _SEVERITY_IMPACT.get(diag.severity.value, 2.0)
@@ -135,29 +157,55 @@ def aggregate(
             if not result.fail_reasons:
                 continue
             trace = result.trace
-            trace_step_id = (
-                trace.steps[-1].node_id if trace and trace.steps else None
+            last_node = trace.steps[-1].node_id if trace and trace.steps else None
+            is_decision = bool(
+                last_node and trace and trace.steps and trace.steps[-1].node_kind == "decision"
             )
+            trace_step_id = None if is_decision else last_node
+            trace_decision_id = last_node if is_decision else None
             for reason in result.fail_reasons:
                 code = _FAIL_REASON_CODE.get(reason, "EX001")
-                key = (code, trace_step_id, None)
+                if reason == FailReason.STRUCTURAL_GAP and trace and trace.outcome.value == "conflict":
+                    code = "EX002"
+                step_for_key, decision_for_key = trace_step_id, trace_decision_id
+                if reason == FailReason.ORDER_VIOLATION and trace and trace.violations:
+                    step_for_key, decision_for_key = trace.violations[0].split()[0], None
+                elif reason in (FailReason.ACTOR_UNAVAILABLE, FailReason.SLA_BREACH) and trace:
+                    # anchor to the step that actually blocked / breached, not the last node reached
+                    wanted = "actor_unavailable" if reason == FailReason.ACTOR_UNAVAILABLE else "sla_breached"
+                    culprit = next((t for t in trace.steps if t.step_status is not None and t.step_status.value == wanted), None)
+                    if culprit is not None:
+                        step_for_key, decision_for_key = culprit.node_id, None
+                key = (code, step_for_key, decision_for_key)
+                facts = dict(trace.scenario.facts) if trace else {}
                 ev = EvidenceItem(
                     kind="test_failure",
                     code=code,
-                    message=f"Test {result.test_id} failed: {reason}",
-                    step_id=trace_step_id,
+                    message=(
+                        f"Scenario {_facts_text(facts) or result.test_id} → "
+                        f"{trace.outcome.value if trace else reason}"
+                    ),
+                    step_id=step_for_key,
+                    decision_id=decision_for_key,
                     test_id=result.test_id,
                     fail_reason=reason,
+                    data={
+                        "facts": facts,
+                        "outcome": trace.outcome.value if trace else None,
+                        "trace_nodes": [t.node_id for t in trace.steps] if trace else [],
+                    },
                 )
                 if key not in cluster:
                     severity = "error" if reason == FailReason.STRUCTURAL_GAP else "warning"
+                    if trace is not None and trace.outcome.value == "ambiguous":
+                        severity = "warning"  # hinges on a vague condition: a wording issue, not a proven gap
                     impact = _SEVERITY_IMPACT.get(severity, 2.0)
                     cluster[key] = _new_finding(
                         code=code,
                         severity=severity,
                         confidence_tier=ConfidenceTier.DETERMINISTIC,
-                        step_id=trace_step_id,
-                        decision_id=None,
+                        step_id=step_for_key,
+                        decision_id=decision_for_key,
                         process_id=trace.process_id if trace else None,
                         likelihood=1.0,
                         impact=impact,

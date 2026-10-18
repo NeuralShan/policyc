@@ -55,7 +55,7 @@ function TestCaseRow({ tc }: { tc: TestCase }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{tc.description}</p>
           <div className="mt-0.5 flex flex-wrap gap-2">
-            <Mono className="text-xs text-slate-400">{tc.id}</Mono>
+            <Mono className="text-xs text-slate-500">{tc.id}</Mono>
             {tc.tags.slice(0, 3).map((t) => (
               <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
                 {t}
@@ -63,7 +63,7 @@ function TestCaseRow({ tc }: { tc: TestCase }) {
             ))}
           </div>
         </div>
-        <span className="shrink-0 text-xs text-slate-400">{open ? "▲" : "▼"}</span>
+        <span className="shrink-0 text-xs text-slate-500">{open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
@@ -84,7 +84,7 @@ function TestCaseRow({ tc }: { tc: TestCase }) {
               {actorEntries.map(([k, v]) => (
                 <span key={k} className="mr-3">
                   <Mono>{k}</Mono>:{" "}
-                  <span className={v === null ? "text-red-600" : ""}>
+                  <span className={v === null ? "text-red-700" : ""}>
                     {v === null ? "unavailable" : v}
                   </span>
                 </span>
@@ -97,7 +97,7 @@ function TestCaseRow({ tc }: { tc: TestCase }) {
               {systemEntries.map(([k, v]) => (
                 <span key={k} className="mr-3">
                   <Mono>{k}</Mono>:{" "}
-                  <span className={!v ? "text-red-600" : "text-emerald-600"}>
+                  <span className={!v ? "text-red-700" : "text-emerald-700"}>
                     {v ? "up" : "DOWN"}
                   </span>
                 </span>
@@ -110,7 +110,7 @@ function TestCaseRow({ tc }: { tc: TestCase }) {
               <Mono>{tc.expected_outcome}</Mono>
               {tc.expected_branch && (
                 <span>
-                  {" "}→ branch <Mono>{tc.expected_branch}</Mono>
+                  {" "}branch <Mono>{tc.expected_branch}</Mono>
                 </span>
               )}
             </div>
@@ -144,7 +144,7 @@ export function TestSuitePage() {
         subtitle={<Mono className="text-sm">{runId}</Mono>}
         actions={
           <Link to={`/runs/${runId}`} className="text-sm text-slate-600 hover:text-slate-900">
-            ← Run
+             Run
           </Link>
         }
       />
@@ -190,7 +190,7 @@ export function TestSuitePage() {
                 className={cx(
                   "rounded px-2 py-0.5 text-xs",
                   filter === "all"
-                    ? "bg-slate-700 text-white"
+                    ? "bg-indigo-600 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                 )}
               >
@@ -203,7 +203,7 @@ export function TestSuitePage() {
                   className={cx(
                     "rounded px-2 py-0.5 text-xs capitalize",
                     filter === o
-                      ? "bg-slate-700 text-white"
+                      ? "bg-indigo-600 text-white"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                   )}
                 >
@@ -215,9 +215,9 @@ export function TestSuitePage() {
         }
       >
         {query.isLoading ? (
-          <p className="text-sm text-slate-400">Loading…</p>
+          <p className="text-sm text-slate-500">Loading…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-slate-400 italic">No test cases.</p>
+          <p className="text-sm text-slate-500 italic">No test cases.</p>
         ) : (
           <div>
             {filtered.map((tc) => (

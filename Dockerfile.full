@@ -1,0 +1,68 @@
+# PolicyC backend, FULL image (Docling + PyTorch, ~4 GB RAM). For self-hosting or a paid Hugging Face Space.
+# (the Hugging Face push script stages this file as Dockerfile).
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_LINK_MODE=copy \
+    PATH="/opt/venv/bin:$PATH"
+
+# libgl1/libglib2.0-0: OpenCV (Docling/RapidOCR). ca-certificates: model download + Gemini API.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install uv && uv venv /opt/venv
+
+WORKDIR /app/backend
+
+# --- dependencies (cached layer: only changes when pyproject/uv.lock change) ---
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt \
+    # CPU-only torch/torchvision (the default Linux wheels drag in ~3 GB of CUDA libraries).
+    && grep -E '^(torch|torchvision)==' /tmp/requirements.txt > /tmp/torch.txt \
+    && uv pip install --python /opt/venv/bin/python -r /tmp/torch.txt \
+         --index-url https://download.pytorch.org/whl/cpu \
+    && uv pip install --python /opt/venv/bin/python -r /tmp/requirements.txt \
+    && rm -rf /root/.cache /tmp/*.txt
+
+# --- Docling model weights baked into the image (no download on cold start) ---
+# `truststore` (used by app.ingest.models for corporate proxies) injects the *system* CA bundle on
+# Linux, which ca-certificates provides, so this path works unchanged.
+ENV PC_MODELS_DIR=/opt/models
+COPY backend/app ./app
+RUN HF_HOME=/tmp/hf python -m app.ingest.models \
+    && rm -rf /tmp/hf /root/.cache \
+    && chmod -R a+rX /opt/models
+
+# --- rest of the app ---
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/alembic ./alembic
+COPY backend/prompts ./prompts
+# Seed projects (optional; added by the core worker). The wildcard keeps COPY from failing if absent.
+COPY backend/seed* ./seed/
+# Built UI is optional (the real frontend is on Firebase Hosting). The staging script always
+# creates frontend/dist (possibly empty); main.py only serves it if index.html exists.
+COPY frontend/dist /app/frontend/dist
+
+# Non-root user (uid 1000 is what Hugging Face Spaces runs as). /data = Space persistent storage
+# if enabled, otherwise ephemeral container disk; the app creates sub-folders on startup.
+RUN useradd -m -u 1000 user && mkdir -p /data && chown -R user:user /data /app
+USER user
+
+# Free-tier defaults (the "pro" tier has no free quota); override with Space variables if you have billing.
+ENV PC_DATA_DIR=/data \
+    PC_GEMINI_BACKEND=developer \
+    PC_MODEL_PRO=gemini-3.5-flash-lite \
+    PC_MODEL_FLASH=gemini-3.5-flash-lite \
+    PC_MODEL_LITE=gemini-3.5-flash-lite \
+    PC_LLM_MAX_RPM=8 \
+    PC_EXECUTOR_WORKERS=2 \
+    HOME=/home/user
+
+EXPOSE 7860
+HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:7860/api/health', timeout=4).status==200 else 1)"
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

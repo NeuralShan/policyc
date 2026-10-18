@@ -38,7 +38,7 @@ function FindingsCard({ findings }: { findings: RlFinding[] }) {
   if (!findings.length) {
     return (
       <Card title="RL Findings">
-        <p className="text-sm italic text-slate-400">No findings — all conformance thresholds met.</p>
+        <p className="text-sm italic text-slate-500">No findings — all conformance thresholds met.</p>
       </Card>
     );
   }
@@ -67,9 +67,6 @@ function FindingsCard({ findings }: { findings: RlFinding[] }) {
 
 function CaseRow({ result }: { result: CaseResult }) {
   const [open, setOpen] = useState(false);
-  const pct = Math.round(result.fitness * 100);
-  const tone =
-    pct >= 80 ? "border-emerald-200 bg-emerald-50" : pct >= 50 ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50";
 
   return (
     <div className="border-b border-slate-100 last:border-0">
@@ -90,7 +87,7 @@ function CaseRow({ result }: { result: CaseResult }) {
             {result.sla_breaches.length} SLA breach
           </span>
         )}
-        <span className="ml-auto shrink-0 text-xs text-slate-400">{open ? "▲" : "▼"}</span>
+        <span className="ml-auto shrink-0 text-xs text-slate-500">{open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
@@ -104,7 +101,7 @@ function CaseRow({ result }: { result: CaseResult }) {
           {result.skipped.length > 0 && (
             <div>
               <span className="font-medium text-amber-700">Skipped: </span>
-              {result.skipped.map((s) => <Mono key={s} className="mr-1.5 text-amber-600">{s}</Mono>)}
+              {result.skipped.map((s) => <Mono key={s} className="mr-1.5 text-amber-700">{s}</Mono>)}
             </div>
           )}
           {result.extra.length > 0 && (
@@ -118,7 +115,7 @@ function CaseRow({ result }: { result: CaseResult }) {
           {result.sla_breaches.length > 0 && (
             <div>
               <span className="font-medium text-red-700">SLA breaches: </span>
-              {result.sla_breaches.map((s) => <Mono key={s} className="mr-1.5 text-red-600">{s}</Mono>)}
+              {result.sla_breaches.map((s) => <Mono key={s} className="mr-1.5 text-red-700">{s}</Mono>)}
             </div>
           )}
         </div>
@@ -193,7 +190,7 @@ function UploadForm({
         <button
           onClick={() => uploadMut.mutate()}
           disabled={uploadMut.isPending}
-          className="rounded-md bg-slate-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
         >
           {uploadMut.isPending ? "Uploading…" : "Upload"}
         </button>
@@ -217,17 +214,27 @@ export function RealityPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [uploaded, setUploaded] = useState(false);
 
+  // Avoid probing GET /reality (a 404 logs console noise) until a report can exist: the run artifact is
+  // a stub until a check ran, and we remember locally that this browser already ran one.
+  const runQuery = useQuery({ queryKey: ["run", runId], queryFn: () => api.run(runId) });
+  const ranKey = `policyc.reality.${runId}`;
+  const artifact = runQuery.data?.artifacts?.reality as { stub?: boolean } | undefined;
+  const mayExist = !!artifact && !artifact.stub ? true : localStorage.getItem(ranKey) === "1";
   const reportQuery = useQuery({
     queryKey: ["reality-report", runId],
     queryFn: () => api.realityReport(runId),
+    enabled: mayExist,
     retry: false,
   });
 
-  const report: RealityReport | undefined = reportQuery.data;
+  const report: RealityReport | undefined = reportQuery.data ?? undefined;
 
   const runMut = useMutation({
     mutationFn: () => api.runRealityCheck(runId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["reality-report", runId] }),
+    onSuccess: (r) => {
+      localStorage.setItem(ranKey, "1");
+      qc.setQueryData(["reality-report", runId], r);
+    },
   });
 
   const filtered =
@@ -238,9 +245,6 @@ export function RealityPage() {
         : report?.case_results ?? [];
 
   const avgPct = report ? Math.round(report.avg_fitness * 100) : null;
-  const conformancePct = report
-    ? Math.round((report.conformant_cases / (report.total_cases || 1)) * 100)
-    : null;
 
   return (
     <>
@@ -249,7 +253,7 @@ export function RealityPage() {
         subtitle={<Mono className="text-sm">{runId}</Mono>}
         actions={
           <Link to={`/runs/${runId}`} className="text-sm text-slate-600 hover:text-slate-900">
-            ← Run
+             Run
           </Link>
         }
       />
@@ -328,7 +332,7 @@ export function RealityPage() {
                       className={cx(
                         "rounded px-2 py-0.5 text-xs",
                         filter === f
-                          ? "bg-slate-700 text-white"
+                          ? "bg-indigo-600 text-white"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                       )}
                     >
@@ -346,7 +350,7 @@ export function RealityPage() {
             }
           >
             {filtered.length === 0 ? (
-              <p className="text-sm italic text-slate-400">No cases.</p>
+              <p className="text-sm italic text-slate-500">No cases.</p>
             ) : (
               <div>
                 {filtered.map((r) => (

@@ -1,0 +1,63 @@
+{
+  "id": "account",
+  "docNo": "ACC-002",
+  "title": "Savings Account Opening Procedure",
+  "language": "en",
+  "domain": "Retail banking / KYC",
+  "organisation": "Meridian Trust Bank Ltd.",
+  "specSection": "16.2",
+  "files": {
+    "text": "sop.md",
+    "pdf": "ACC-002_Savings_Account_Opening_Procedure_v1.4.pdf",
+    "docx": "ACC-002_Savings_Account_Opening_Procedure_v1.4.docx"
+  },
+  "totals": {
+    "errors": 4,
+    "warnings": 1,
+    "info": 0
+  },
+  "planted": [
+    {
+      "code": "E102",
+      "clauses": [
+        "C2.1",
+        "C2.2"
+      ],
+      "bug": "No rule for under-10s, or minors without a guardian",
+      "witness": "age=9"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C2.1",
+        "C2.2"
+      ],
+      "bug": "Adults with a guardian match both C2.1 and C2.2",
+      "witness": "age=18, has_guardian=true"
+    },
+    {
+      "code": "E102",
+      "clauses": [
+        "C4.1",
+        "C4.2",
+        "C4.3"
+      ],
+      "bug": "Medium risk is never handled",
+      "witness": "risk_rating=medium"
+    },
+    {
+      "code": "E107",
+      "clauses": [
+        "C2.2"
+      ],
+      "bug": "Guardian onboarding leads nowhere (Section 9 doesn't exist)"
+    },
+    {
+      "code": "W207",
+      "clauses": [
+        "C2.2"
+      ],
+      "bug": "Reference to non-existent Section 9"
+    }
+  ]
+}

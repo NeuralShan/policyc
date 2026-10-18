@@ -1,0 +1,22 @@
+# Render Blueprint: one click creates the free PolicyC backend. See deploy/DEPLOY.md.
+services:
+  - type: web
+    name: policyc-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PC_GEMINI_API_KEY      # secret: paste it in the Render dashboard
+        sync: false
+      - key: PC_FIREBASE_PROJECT_ID # your Firebase project id (turns on Google sign-in checks)
+        sync: false
+      - key: PC_CORS_ORIGINS        # https://<project>.web.app,https://<project>.firebaseapp.com
+        sync: false
+      - key: PC_GEMINI_BACKEND
+        value: developer
+      - key: PC_LLM_MAX_RPM
+        value: "8"

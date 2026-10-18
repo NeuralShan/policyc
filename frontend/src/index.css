@@ -1,10 +1,231 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+  --font-sans: "Inter Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "Cascadia Code", Consolas, ui-monospace, monospace;
+  --animate-fade-in: fade-in 160ms ease-out both;
+  --animate-pop: pop 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  --animate-slide-up: slide-up 200ms ease-out both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-node-pulse: node-pulse 1.4s ease-out infinite;
 }
 
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes node-pulse-indigo {
+  0% { box-shadow: 0 0 0 0 rgb(99 102 241 / 0.55); }
+  100% { box-shadow: 0 0 0 16px rgb(99 102 241 / 0); }
+}
+@keyframes node-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(239 68 68 / 0.55); }
+  100% { box-shadow: 0 0 0 14px rgb(239 68 68 / 0); }
+}
+
+/* Dark mode: the slate/gray scale is inverted and every semantic tint is re-based onto a dark surface,
+   so utilities written for light mode (bg-white, text-slate-900, bg-red-50 ...) stay correct. */
+html.dark {
+  color-scheme: dark;
+  --surface: #171c2d;
+  --color-slate-50: #0e1220;
+  --color-slate-100: #151a2b;
+  --color-slate-200: #212840;
+  --color-slate-300: #323c58;
+  --color-slate-400: #6b7a96;
+  --color-slate-500: #93a1b8;
+  --color-slate-600: #aab6ca;
+  --color-slate-700: #c4cddc;
+  --color-slate-800: #dde3ed;
+  --color-slate-900: #eef2f7;
+  --color-slate-950: #f8fafc;
+  --color-gray-50: #0e1220;
+  --color-gray-100: #151a2b;
+  --color-gray-200: #212840;
+  --color-gray-300: #323c58;
+  --color-gray-400: #6b7a96;
+  --color-gray-500: #93a1b8;
+  --color-gray-600: #aab6ca;
+  --color-gray-700: #c4cddc;
+  --color-gray-800: #dde3ed;
+  --color-gray-900: #eef2f7;
+  --color-gray-950: #f8fafc;
+  --color-zinc-50: #0e1220;
+  --color-zinc-100: #151a2b;
+  --color-zinc-200: #212840;
+  --color-zinc-300: #323c58;
+  --color-zinc-400: #6b7a96;
+  --color-zinc-500: #93a1b8;
+  --color-zinc-600: #aab6ca;
+  --color-zinc-700: #c4cddc;
+  --color-zinc-800: #dde3ed;
+  --color-zinc-900: #eef2f7;
+  --color-zinc-950: #f8fafc;
+  --color-red-50: #2a1215;
+  --color-red-100: #3a171b;
+  --color-red-200: #5c2229;
+  --color-red-300: #7f2d36;
+  --color-red-400: #f87171;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+  --color-red-900: #fee2e2;
+  --color-rose-50: #2a1219;
+  --color-rose-100: #3a1721;
+  --color-rose-200: #5c2233;
+  --color-rose-300: #7f2d45;
+  --color-rose-400: #fb7185;
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fecdd3;
+  --color-rose-900: #ffe4e6;
+  --color-orange-50: #2a1a0d;
+  --color-orange-100: #3a2410;
+  --color-orange-200: #5c3815;
+  --color-orange-300: #7f4d1c;
+  --color-orange-400: #fb923c;
+  --color-orange-700: #fdba74;
+  --color-orange-800: #fed7aa;
+  --color-orange-900: #ffedd5;
+  --color-amber-50: #2a2008;
+  --color-amber-100: #3a2c0a;
+  --color-amber-200: #5c4510;
+  --color-amber-300: #7f5f17;
+  --color-amber-400: #fbbf24;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+  --color-yellow-50: #262106;
+  --color-yellow-100: #352d08;
+  --color-yellow-200: #574a0c;
+  --color-yellow-300: #7a6710;
+  --color-yellow-400: #facc15;
+  --color-yellow-700: #fde047;
+  --color-yellow-800: #fef08a;
+  --color-yellow-900: #fef9c3;
+  --color-emerald-50: #0c2219;
+  --color-emerald-100: #10301f;
+  --color-emerald-200: #17503a;
+  --color-emerald-300: #1f6e50;
+  --color-emerald-400: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+  --color-emerald-900: #d1fae5;
+  --color-green-50: #0c2216;
+  --color-green-100: #10301c;
+  --color-green-200: #17502c;
+  --color-green-300: #1f6e3c;
+  --color-green-400: #4ade80;
+  --color-green-700: #86efac;
+  --color-green-800: #bbf7d0;
+  --color-green-900: #dcfce7;
+  --color-teal-50: #0b2222;
+  --color-teal-100: #0f3030;
+  --color-teal-200: #165050;
+  --color-teal-300: #1d6e6e;
+  --color-teal-400: #2dd4bf;
+  --color-teal-700: #5eead4;
+  --color-teal-800: #99f6e4;
+  --color-teal-900: #ccfbf1;
+  --color-sky-50: #0c1d2c;
+  --color-sky-100: #102a40;
+  --color-sky-200: #173f60;
+  --color-sky-300: #1f5686;
+  --color-sky-400: #38bdf8;
+  --color-sky-700: #7dd3fc;
+  --color-sky-800: #bae6fd;
+  --color-sky-900: #e0f2fe;
+  --color-blue-50: #0e1b33;
+  --color-blue-100: #13284a;
+  --color-blue-200: #1c3d70;
+  --color-blue-300: #255496;
+  --color-blue-400: #60a5fa;
+  --color-blue-700: #93c5fd;
+  --color-blue-800: #bfdbfe;
+  --color-blue-900: #dbeafe;
+  --color-indigo-50: #171a3a;
+  --color-indigo-100: #1f2350;
+  --color-indigo-200: #2f3580;
+  --color-indigo-300: #3f47b0;
+  --color-indigo-400: #818cf8;
+  --color-indigo-700: #a5b4fc;
+  --color-indigo-800: #c7d2fe;
+  --color-indigo-900: #e0e7ff;
+  --color-violet-50: #1e1536;
+  --color-violet-100: #2a1c4a;
+  --color-violet-200: #3f2a73;
+  --color-violet-300: #54399c;
+  --color-violet-400: #a78bfa;
+  --color-violet-700: #c4b5fd;
+  --color-violet-800: #ddd6fe;
+  --color-violet-900: #ede9fe;
+  --color-purple-50: #251236;
+  --color-purple-100: #341a4c;
+  --color-purple-200: #4f2870;
+  --color-purple-300: #6a3694;
+  --color-purple-400: #c084fc;
+  --color-purple-700: #d8b4fe;
+  --color-purple-800: #e9d5ff;
+  --color-purple-900: #f3e8ff;
+}
+html.dark .bg-white { background-color: var(--surface); }
+html.dark .border-white { border-color: var(--surface); }
+
+html { --surface: #fff; color-scheme: light; scroll-behavior: smooth; }
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
+  font-feature-settings: "cv11", "ss01";
+  overflow-x: hidden;
+}
+html.dark body { background-image: radial-gradient(1200px 500px at 50% -10%, rgb(99 102 241 / 0.10), transparent 60%); background-attachment: fixed; }
+p, li, h1, h2, h3, blockquote { overflow-wrap: anywhere; }
+code, kbd, pre, .font-mono { font-variant-ligatures: none; }
+::selection { background: rgb(99 102 241 / 0.28); }
+
+/* Accessible focus ring for every interactive element. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-indigo-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.glass { background: color-mix(in srgb, var(--surface) 88%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-slate-100) 25%, var(--color-slate-200) 37%, var(--color-slate-100) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 6px;
+}
+
+/* Source-clause highlighting in the document pane. */
+.clause-hl { background: rgb(99 102 241 / 0.16); box-shadow: inset 3px 0 0 var(--color-indigo-500); }
+.vague-underline { text-decoration: underline wavy var(--color-amber-500); text-underline-offset: 3px; }
+
+/* React Flow tuning */
+.react-flow__attribution { font-size: 9px; opacity: 0.6; }
+html.dark .react-flow { --xy-background-color: transparent; }
+.rf-edge-travelled { stroke: var(--color-indigo-500) !important; stroke-width: 3 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Printable audit report */
+.print-only { display: none; }
+@media print {
+  html.dark { color-scheme: light; }
+  body { background: #fff !important; color: #000 !important; }
+  #root, .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .print-root { color: #111; font-family: Inter Variable, system-ui, sans-serif; font-size: 11pt; }
+  .print-root h1 { font-size: 20pt; } .print-root h2 { font-size: 14pt; margin-top: 16pt; }
+  .print-root .finding { break-inside: avoid; border: 1px solid #ccc; padding: 8pt; margin: 8pt 0; }
 }

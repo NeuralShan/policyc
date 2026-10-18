@@ -1,0 +1,11 @@
+{
+ "id": "dispute-id",
+ "title": "Prosedur Penanganan Sanggahan Transaksi Kartu dan Chargeback",
+ "doc_code": "DSP-004-ID",
+ "industry": "Fintech / payments customer operations (Bahasa Indonesia translation of DSP-004)",
+ "language": "id",
+ "description": "Same card-dispute procedure in Bahasa Indonesia: proves the compiler reads other languages.",
+ "planted_bugs": 7,
+ "file": "DSP-004-ID_Prosedur_Sanggahan_Transaksi_Kartu_v2.0.pdf",
+ "text_file": "sop.md"
+}

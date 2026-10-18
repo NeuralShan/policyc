@@ -12,82 +12,16 @@ import re
 
 import z3
 
+from app.logic import ConstraintBuilder
 from app.schemas.ir_sop import (
     AlwaysCondition,
-    CompareCondition,
-    ConditionExpr,
-    LogicalCondition,
     SopIR,
-    UnknownCondition,
-    VagueCondition,
-    ValueType,
 )
 from app.schemas.testcase import TestCase, TestOrigin
 from app.schemas.trace import Scenario
 
 log = logging.getLogger(__name__)
 
-_OP_MAP = {
-    "eq": lambda a, b: a == b,
-    "ne": lambda a, b: a != b,
-    "lt": lambda a, b: a < b,
-    "le": lambda a, b: a <= b,
-    "gt": lambda a, b: a > b,
-    "ge": lambda a, b: a >= b,
-}
-
-
-def _to_z3(
-    expr: ConditionExpr,
-    vars_cache: dict[str, z3.ArithRef],
-) -> z3.BoolRef | None:
-    if isinstance(expr, AlwaysCondition):
-        return z3.BoolVal(True)
-    if isinstance(expr, (VagueCondition, UnknownCondition)):
-        return None
-    if isinstance(expr, CompareCondition):
-        rv = expr.right
-        if rv.value_type not in (ValueType.NUMBER, ValueType.MONEY, ValueType.DURATION):
-            return None
-        if rv.number is None:
-            return None
-        if expr.left not in vars_cache:
-            vars_cache[expr.left] = z3.Real(expr.left)
-        op_fn = _OP_MAP.get(expr.op)
-        if op_fn is None:
-            return None
-        return op_fn(vars_cache[expr.left], rv.number)
-    if isinstance(expr, LogicalCondition):
-        sub = [_to_z3(op, vars_cache) for op in expr.operands]
-        if any(f is None for f in sub):
-            return None
-        typed: list[z3.BoolRef] = sub  # type: ignore[assignment]
-        if expr.logical_op == "and":
-            return z3.And(*typed)
-        if expr.logical_op == "or":
-            return z3.Or(*typed)
-        if expr.logical_op == "not" and len(typed) == 1:
-            return z3.Not(typed[0])
-    return None
-
-
-def _extract_facts(
-    model: z3.ModelRef,
-    vars_cache: dict[str, z3.ArithRef],
-) -> dict[str, float]:
-    facts: dict[str, float] = {}
-    for name, z3_var in vars_cache.items():
-        val = model[z3_var]
-        if val is None:
-            continue
-        try:
-            facts[name] = float(val.numerator_as_long()) / float(val.denominator_as_long())
-        except AttributeError:
-            import contextlib
-
-            with contextlib.suppress(ValueError, TypeError):
-                facts[name] = float(str(val))
-    return facts
 
 
 def _slug(text: str) -> str:
@@ -126,8 +60,10 @@ def generate_branch_tests(ir: SopIR) -> list[TestCase]:
                     )
                     continue
 
-                vars_cache: dict[str, z3.ArithRef] = {}
-                formula = _to_z3(branch.condition, vars_cache)
+                builder = ConstraintBuilder()
+                for other in dec.branches:
+                    builder.scan(other.condition)
+                formula = builder.formula(branch.condition)
                 if formula is None:
                     log.debug(
                         "solver: skipping branch '%s' of decision '%s' (un-translatable)",
@@ -137,7 +73,7 @@ def generate_branch_tests(ir: SopIR) -> list[TestCase]:
                     continue
 
                 solver = z3.Solver()
-                solver.add(formula)
+                solver.add(*builder.domain(), formula)
                 if solver.check() != z3.sat:
                     log.debug(
                         "solver: branch '%s' of decision '%s' is unsatisfiable",
@@ -146,7 +82,7 @@ def generate_branch_tests(ir: SopIR) -> list[TestCase]:
                     )
                     continue
 
-                facts = _extract_facts(solver.model(), vars_cache)
+                facts = builder.facts(solver.model())
                 sc_id = (
                     f"sc_branch_{_slug(dec.id)}_{i}_{_slug(branch.label)}"
                 )

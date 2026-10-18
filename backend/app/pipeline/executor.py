@@ -61,6 +61,7 @@ class RunExecutor:
                 "run_id": run.id,
                 "project_id": run.project_id,
                 "document_ids": list(run.document_ids),
+                "auto_approve": bool(run.auto_approve),
                 "artifacts": {},
             }
 

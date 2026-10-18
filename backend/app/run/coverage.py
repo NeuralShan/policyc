@@ -16,7 +16,8 @@ def compute_coverage(ir: SopIR, traces: list[ExecutionTrace]) -> CoverageReport:
 
     for proc in ir.processes:
         for step in proc.steps:
-            all_step_ids.add(step.id)
+            if not step.off_flow:
+                all_step_ids.add(step.id)
         for dec in proc.decisions:
             all_decision_ids.add(dec.id)
             for branch in dec.branches:

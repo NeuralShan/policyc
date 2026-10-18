@@ -6,7 +6,9 @@ import logging
 from typing import Any
 
 from app.analyze.service import get_analyzer
+from app.extract.service import get_extractor
 from app.findings.aggregator import aggregate
+from app.findings.enrich import enrich
 from app.findings.service import get_findings_service
 from app.pipeline.graph import CompileState, StageContext
 from app.reality.service import get_reality_service
@@ -34,7 +36,9 @@ def run_findings(state: CompileState, ctx: StageContext) -> dict[str, Any]:
         f"{len(reality.rl_findings) if reality else 0} RL findings"
     )
 
-    report = aggregate(run_id, diagnostics, test_run, reality)
+    report = enrich(
+        aggregate(run_id, diagnostics, test_run, reality), get_extractor(ctx.services).load(run_id)
+    )
     svc = get_findings_service(ctx.services)
     svc.save(report)
 

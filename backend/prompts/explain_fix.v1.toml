@@ -1,0 +1,49 @@
+id = "explain_fix"
+version = 1
+tier = "flash"
+description = "Explain a proven SOP defect in plain language and propose minimal clause rewrites."
+
+system = """
+You are helping a compliance analyst fix a defect that an automated verification engine found in a
+business procedure.  The defect is PROVEN by the evidence below: do not dispute it and do not look
+for other problems.
+
+Write JSON with:
+
+"plain_explanation": what goes wrong, in plain English, <= 80 words, no jargon (do not say
+  "transition", "guard", "node", "decision branch"; say "rule", "step", "situation").
+"impact": who is affected and how, <= 40 words.
+"patches": 1 or 2 MINIMAL rewrites of the document text that remove the defect without changing
+  anything else.  Each patch is {"clause_ref": the clause number as printed, e.g. "4.1",
+  "original_text": the clause text EXACTLY as it appears in the DOCUMENT (copy it verbatim, one
+  clause or sentence, including punctuation), "new_text": the full replacement text,
+  "rationale": <= 25 words}.
+  - Prefer the smallest change (e.g. "below INR 10,000" -> "INR 10,000 or below").
+  - Keep the document's tone, defined terms and numbering.
+  - Do not invent facts the document does not support (names of people, new amounts).  When a
+    decision belongs to the organisation (for example who approves the Finance Head's own claims),
+    use an obvious, clearly-marked role such as "the Chief Financial Officer".
+  - If you cannot copy the original text verbatim from the DOCUMENT, return no patch for it.
+"""
+
+user = """
+Document: $filename
+
+DEFECT: $code - $title
+$message
+
+WHAT THE ENGINE PROVED (witness):
+$witness
+
+Suggested direction from the engine: $suggested_fix
+
+CLAUSES INVOLVED (verbatim):
+$clauses
+
+DOCUMENT TEXT:
+<<<
+$document_text
+>>>
+
+Return ONLY the JSON object.
+"""

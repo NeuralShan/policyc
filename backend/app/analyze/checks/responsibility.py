@@ -26,7 +26,7 @@ def responsibility_checks(ir: SopIR, _linked: LinkedIR | None) -> list[Diagnosti
 
     for proc in ir.processes:
         for step in proc.steps:
-            if step.kind == StepKind.TERMINAL:
+            if step.kind == StepKind.TERMINAL or step.off_flow:
                 continue
 
             has_role = bool(step.actor_role_id)

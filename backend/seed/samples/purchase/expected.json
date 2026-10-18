@@ -1,0 +1,56 @@
+{
+  "id": "purchase",
+  "docNo": "PRC-006",
+  "title": "Purchase Requisition and Purchase Order Approval Procedure",
+  "language": "en",
+  "domain": "Manufacturing procurement (Japan)",
+  "organisation": "Hoshino Precision Manufacturing Co., Ltd.",
+  "specSection": null,
+  "files": {
+    "text": "sop.md",
+    "pdf": "PRC-006_Purchase_Requisition_and_PO_Approval_Procedure_v3.0.pdf",
+    "docx": "PRC-006_Purchase_Requisition_and_PO_Approval_Procedure_v3.0.docx"
+  },
+  "totals": {
+    "errors": 4,
+    "warnings": 0,
+    "info": 0
+  },
+  "planted": [
+    {
+      "code": "E102",
+      "clauses": [
+        "C4.1",
+        "C4.2"
+      ],
+      "bug": "Approval bands leave JPY 500,001 to 1,000,000 with no approver (limit lowered in v3.0, upper band not adjusted)",
+      "witness": "value=500001, capex=false"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C4.2",
+        "C4.3"
+      ],
+      "bug": "Above JPY 50,000,000 both the Plant Director (C4.2) and the Board (C4.3) rules apply",
+      "witness": "value=50000001, capex=false"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C4.1",
+        "C4.4"
+      ],
+      "bug": "A capex requisition up to JPY 500,000 matches both the Section Manager (C4.1) and Plant Director (C4.4)",
+      "witness": "value=500000, capex=true"
+    },
+    {
+      "code": "E107",
+      "clauses": [
+        "C3.3"
+      ],
+      "bug": "Supplier onboarding has no way back into the approval flow and no outcome"
+    }
+  ],
+  "notes": "An error-only document (no warnings planted). A live compile may model onboarding as a terminal; then E107 will not appear and should be recorded as a modelling difference, not a miss."
+}

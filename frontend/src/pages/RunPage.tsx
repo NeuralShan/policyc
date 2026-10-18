@@ -1,320 +1,252 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 
-import { api, type RunDetail, type RunEvent, type Stage } from "../api";
-import { PageHeader } from "../components/Layout";
-import {
-  Badge,
-  Card,
-  ErrorNote,
-  Mono,
-  StatusBadge,
-  cx,
-  formatDate,
-  formatDuration,
-} from "../components/ui";
-import { useRunEvents } from "../hooks/useRunEvents";
+import { api } from "../api";
+import { EmbeddedContext, PageHeader } from "../components/Layout";
+import { PipelineCard } from "../components/RunProgress";
+import { Icon } from "../components/icons";
+import { ErrorNote, SkeletonList, Spinner, StatusBadge, Tabs, cx, formatDate, useMediaQuery } from "../components/ui";
+import { WorkspaceProvider, useWorkspace, type BottomTab } from "../components/workspace/ctx";
+import DocPane from "../components/workspace/DocPane";
+import ExplainDialog from "../components/workspace/ExplainDialog";
+import ProblemsPanel from "../components/workspace/ProblemsPanel";
+import TestsPanel from "../components/workspace/TestsPanel";
+import { Toolbar } from "../components/workspace/Toolbar";
+import TracePanel from "../components/workspace/TracePanel";
 
-type StageState = "pending" | "running" | "completed" | "failed" | "skipped";
+const FlowChart = lazy(() => import("../components/workspace/FlowChart"));
+const GraphPage = lazy(() => import("./GraphPage").then((m) => ({ default: m.GraphPage })));
+const IRReviewPage = lazy(() => import("./IRReviewPage").then((m) => ({ default: m.IRReviewPage })));
+const RealityPage = lazy(() => import("./RealityPage").then((m) => ({ default: m.RealityPage })));
 
 export function RunPage() {
   const { runId = "" } = useParams();
-  const queryClient = useQueryClient();
   const run = useQuery({ queryKey: ["run", runId], queryFn: () => api.run(runId) });
-  const stages = useQuery({ queryKey: ["stages"], queryFn: api.stages, staleTime: Infinity });
 
-  const active = run.data?.status === "queued" || run.data?.status === "running";
-  const paused = run.data?.status === "paused";
-  const live = useRunEvents(runId, active, () => {
-    queryClient.invalidateQueries({ queryKey: ["run", runId] });
-    queryClient.invalidateQueries({ queryKey: ["runs", run.data?.project_id] });
-    queryClient.invalidateQueries({ queryKey: ["documents", run.data?.project_id] });
-    queryClient.invalidateQueries({ queryKey: ["ast"] });
-  });
+  if (run.isLoading)
+    return (
+      <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-8">
+        <div className="skeleton h-8 w-64" />
+        <SkeletonList rows={6} />
+      </div>
+    );
+  if (run.error || !run.data)
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4 py-10">
+        <ErrorNote error={run.error ?? new Error("Run not found")} onRetry={() => void run.refetch()} />
+      </div>
+    );
 
-  const events = new Map<number, RunEvent>(run.data?.events.map((e) => [e.id, e]));
-  live.forEach((e, id) => events.set(id, e));
-  const ordered = [...events.values()].sort((a, b) => a.id - b.id);
-
-  return (
-    <>
-      <PageHeader
-        title={<span className="font-mono">{runId}</span>}
-        subtitle={run.data && <RunSummary run={run.data} />}
-        actions={
-          run.data && (
-            <Link to={`/projects/${run.data.project_id}`} className="text-sm text-slate-600 hover:text-slate-900">
-              ← Project
-            </Link>
-          )
-        }
-      />
-      <ErrorNote error={run.error ?? stages.error} />
-      {run.data?.error && (
-        <div className="mb-6">
-          <ErrorNote error={run.data.error} />
-        </div>
-      )}
-      {paused && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3">
-          <span className="text-sm font-medium text-amber-800">
-            Awaiting IR review before the pipeline continues.
-          </span>
-          <Link
-            to={`/runs/${runId}/ir-review`}
-            className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
-          >
-            Review IR →
-          </Link>
-        </div>
-      )}
-      {run.data?.status === "succeeded" && run.data?.artifacts?.link && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3">
-          <span className="text-sm font-medium text-indigo-800">
-            Knowledge graph ready —{" "}
-            {(run.data.artifacts.link as Record<string, number>).nodes ?? 0} nodes,{" "}
-            {(run.data.artifacts.link as Record<string, number>).edges ?? 0} edges.
-          </span>
-          <Link
-            to={`/runs/${runId}/graph`}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            View Graph →
-          </Link>
-        </div>
-      )}
-      {run.data?.status === "succeeded" && run.data?.artifacts?.analyze && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3">
-          <span className="text-sm font-medium text-rose-800">
-            Static analysis complete —{" "}
-            {(run.data.artifacts.analyze as Record<string, number>).total_errors ?? 0} error(s),{" "}
-            {(run.data.artifacts.analyze as Record<string, number>).total_warnings ?? 0} warning(s).
-          </span>
-          <Link
-            to={`/runs/${runId}/diagnostics`}
-            className="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700"
-          >
-            View Diagnostics →
-          </Link>
-        </div>
-      )}
-      {run.data?.status === "succeeded" && run.data?.artifacts?.extract && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-violet-200 bg-violet-50 px-4 py-3">
-          <span className="text-sm font-medium text-violet-800">
-            Process simulator ready — run scenarios to trace execution paths.
-          </span>
-          <Link
-            to={`/runs/${runId}/simulator`}
-            className="rounded-md bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
-          >
-            Open Simulator →
-          </Link>
-        </div>
-      )}
-      {run.data?.status === "succeeded" && run.data?.artifacts?.testgen && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-teal-200 bg-teal-50 px-4 py-3">
-          <span className="text-sm font-medium text-teal-800">
-            Test suite ready —{" "}
-            {(run.data.artifacts.testgen as Record<string, number>).total ?? 0} test cases
-            ({(run.data.artifacts.testgen as Record<string, number>).boundary ?? 0} boundary,{" "}
-            {(run.data.artifacts.testgen as Record<string, number>).branch ?? 0} branch,{" "}
-            {(run.data.artifacts.testgen as Record<string, number>).fault ?? 0} fault).
-          </span>
-          <Link
-            to={`/runs/${runId}/tests`}
-            className="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700"
-          >
-            View Tests →
-          </Link>
-        </div>
-      )}
-      {run.data?.status === "succeeded" && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
-          <span className="text-sm font-medium text-slate-700">
-            Reality check — upload real case history to measure conformance against this SOP.
-          </span>
-          <Link
-            to={`/runs/${runId}/reality`}
-            className="rounded-md bg-slate-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            Open Reality →
-          </Link>
-        </div>
-      )}
-      {run.data?.status === "succeeded" && run.data?.artifacts?.execute && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <span className="text-sm font-medium text-emerald-800">
-            Test run complete —{" "}
-            {(run.data.artifacts.execute as Record<string, number>).passed ?? 0}/
-            {(run.data.artifacts.execute as Record<string, number>).total ?? 0} passed,{" "}
-            step coverage{" "}
-            {(run.data.artifacts.execute as Record<string, number>).step_coverage_pct ?? 0}%.
-          </span>
-          <Link
-            to={`/runs/${runId}/testrun`}
-            className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
-          >
-            View Report →
-          </Link>
-        </div>
-      )}
-      {run.data?.status === "succeeded" && run.data?.artifacts?.findings && (
-        <div className="mb-6 flex items-center gap-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3">
-          <span className="text-sm font-medium text-orange-800">
-            {(run.data.artifacts.findings as Record<string, number>).total ?? 0} findings aggregated —{" "}
-            {(run.data.artifacts.findings as Record<string, number>).open ?? 0} open.
-          </span>
-          <Link
-            to={`/runs/${runId}/findings`}
-            className="rounded-md bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700"
-          >
-            View Findings →
-          </Link>
-        </div>
-      )}
-      <Card title="Pipeline">
-        <ol className="space-y-2">
-          {stages.data?.map((stage) => (
-            <StageRow
-              key={stage.key}
-              stage={stage}
-              events={ordered.filter((e) => e.stage === stage.key)}
-              state={stageState(stage.key, ordered, run.data?.status)}
-              artifact={run.data?.artifacts[stage.key]}
-            />
-          ))}
-        </ol>
-      </Card>
-    </>
-  );
-}
-
-function RunSummary({ run }: { run: RunDetail }) {
-  return (
-    <span className="flex flex-wrap items-center gap-3">
-      <StatusBadge status={run.status} />
-      <span>{run.document_ids.length} document{run.document_ids.length === 1 ? "" : "s"}</span>
-      <span>queued {formatDate(run.created_at)}</span>
-      <span>duration {formatDuration(run.started_at, run.finished_at)}</span>
-    </span>
-  );
-}
-
-function stageState(key: string, events: RunEvent[], runStatus?: string): StageState {
-  const last = events.filter((e) => e.stage === key).at(-1);
-  if (last?.status === "started" || last?.status === "progress") {
-    if (runStatus === "failed") return "failed";
-    if (runStatus === "paused") return "running"; // interrupted mid-stage
-    return "running";
-  }
-  if (last) return last.status;
-  return runStatus === "failed" ? "skipped" : "pending";
-}
-
-interface IngestedDocument {
-  document_id: string;
-  filename?: string;
-  error?: string;
-  nodes?: number;
-  tables?: number;
-  figures?: number;
-  diagrams?: number;
-  ocr_pages?: number;
-  vision_corrected?: number;
-  warnings?: number;
-  doc_class?: string | null;
-}
-
-function IngestResults({ artifact }: { artifact: { documents?: IngestedDocument[] } }) {
-  if (!artifact.documents?.length) return null;
-  return (
-    <ul className="mt-2 space-y-1 text-sm">
-      {artifact.documents.map((d) => (
-        <li key={d.document_id} className="flex flex-wrap items-center gap-2">
-          <Link to={`/documents/${d.document_id}`} className="text-slate-900 hover:underline">
-            {d.filename ?? d.document_id}
-          </Link>
-          {d.error ? (
-            <span className="text-red-700">{d.error}</span>
-          ) : (
-            <span className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
-              {d.doc_class && <Badge tone="blue">{d.doc_class}</Badge>}
-              {d.nodes} nodes · {d.tables} tables · {d.figures} figures
-              {!!d.diagrams && <Badge tone="violet">{d.diagrams} diagram(s)</Badge>}
-              {!!d.ocr_pages && <Badge tone="amber">{d.ocr_pages} OCR page(s)</Badge>}
-              {!!d.vision_corrected && <Badge tone="violet">{d.vision_corrected} vision-corrected</Badge>}
-              {!!d.warnings && <Badge tone="amber">{d.warnings} warning(s)</Badge>}
+  if (run.data.status !== "succeeded") {
+    return (
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <PageHeader
+          title={<span className="font-mono text-lg">{runId}</span>}
+          subtitle={
+            <span className="flex flex-wrap items-center gap-3">
+              <StatusBadge status={run.data.status} />
+              <span>queued {formatDate(run.data.created_at)}</span>
             </span>
-          )}
-        </li>
-      ))}
-    </ul>
+          }
+          actions={
+            <Link to={`/projects/${run.data.project_id}`} className="text-sm font-medium text-indigo-700 hover:underline">
+              Back to project
+            </Link>
+          }
+        />
+        <PipelineCard run={run.data} />
+      </div>
+    );
+  }
+
+  return (
+    <WorkspaceProvider run={run.data}>
+      <Workspace />
+    </WorkspaceProvider>
   );
 }
 
-const markerStyles: Record<StageState, string> = {
-  pending: "border-slate-300 bg-white text-slate-400",
-  running: "border-blue-500 bg-blue-50 text-blue-700 animate-pulse",
-  completed: "border-emerald-500 bg-emerald-500 text-white",
-  failed: "border-red-500 bg-red-500 text-white",
-  skipped: "border-slate-200 bg-slate-100 text-slate-400",
-};
+/* ----------------------------------------------------------- resizing */
+function useStored(key: string, initial: number) {
+  const [v, setV] = useState(() => {
+    const s = Number(localStorage.getItem(key));
+    return Number.isFinite(s) && s > 0 ? s : initial;
+  });
+  useEffect(() => localStorage.setItem(key, String(Math.round(v))), [key, v]);
+  return [v, setV] as const;
+}
 
-function StageRow({ stage, events, state, artifact }: {
-  stage: Stage;
-  events: RunEvent[];
-  state: StageState;
-  artifact: unknown;
+function Splitter({ orientation, onDrag, value, min, max, label }: {
+  orientation: "vertical" | "horizontal";
+  onDrag: (delta: number) => void;
+  value: number;
+  min: number;
+  max: number;
+  label: string;
 }) {
-  const started = events.find((e) => e.status === "started");
-  const ended = events.findLast((e) => e.status === "completed" || e.status === "failed");
-  const progress = events.filter((e) => e.status === "progress");
-  const latest = state === "running" ? progress.at(-1) : ended;
-  const message = latest?.message && latest.message !== "stub" ? latest.message : null;
-
+  const last = useRef(0);
+  const vertical = orientation === "vertical";
   return (
-    <li className="flex gap-4 rounded-md px-2 py-2">
-      <div
-        className={cx(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold",
-          markerStyles[state],
-        )}
-        title={`Layer ${stage.layer}`}
-      >
-        L{stage.layer}
+    <div
+      role="separator"
+      aria-orientation={orientation}
+      aria-label={label}
+      aria-valuenow={Math.round(value)}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      tabIndex={0}
+      onPointerDown={(e) => {
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        last.current = vertical ? e.clientX : e.clientY;
+      }}
+      onPointerMove={(e) => {
+        if (!(e.target as HTMLElement).hasPointerCapture(e.pointerId)) return;
+        const pos = vertical ? e.clientX : e.clientY;
+        onDrag(pos - last.current);
+        last.current = pos;
+      }}
+      onKeyDown={(e) => {
+        const step = e.shiftKey ? 60 : 20;
+        if (vertical && e.key === "ArrowLeft") onDrag(-step);
+        else if (vertical && e.key === "ArrowRight") onDrag(step);
+        else if (!vertical && e.key === "ArrowUp") onDrag(-step);
+        else if (!vertical && e.key === "ArrowDown") onDrag(step);
+        else return;
+        e.preventDefault();
+      }}
+      className={cx(
+        "group relative z-10 shrink-0 touch-none bg-slate-200 transition-colors hover:bg-indigo-400 focus-visible:bg-indigo-500",
+        vertical ? "w-1 cursor-col-resize" : "h-1 cursor-row-resize",
+      )}
+    >
+      <span className={cx("absolute", vertical ? "-inset-x-1.5 inset-y-0" : "-inset-y-1.5 inset-x-0")} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------- workspace */
+function LazyPage({ children }: { children: ReactNode }) {
+  return (
+    <EmbeddedContext.Provider value={true}>
+      <div className="h-full overflow-y-auto p-3 sm:p-4">
+        <Suspense fallback={<SkeletonList rows={5} />}>{children}</Suspense>
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-slate-900">{stage.label}</span>
-          <Mono>{stage.compiler_analogy}</Mono>
-          <StatusBadge status={state} />
-          {!stage.implemented && <Badge tone="amber">stub</Badge>}
-          {started && ended && (
-            <span className="text-xs text-slate-500">{formatDuration(started.created_at, ended.created_at)}</span>
-          )}
+    </EmbeddedContext.Provider>
+  );
+}
+
+function Workspace() {
+  const ws = useWorkspace();
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const [docW, setDocW] = useStored("policyc.docW", 340);
+  const [bottomH, setBottomH] = useStored("policyc.bottomH", 300);
+  const container = useRef<HTMLDivElement>(null);
+
+  // Trace started on mobile -> show flowchart? Keep the trace tab: users switch to Flow to watch.
+  const clampDoc = useCallback((d: number) => setDocW((w) => Math.max(220, Math.min(w + d, Math.round((container.current?.clientWidth ?? 1200) * 0.6)))), [setDocW]);
+  const clampBottom = useCallback((d: number) => setBottomH((h) => Math.max(120, Math.min(h - d, Math.round(window.innerHeight * 0.75)))), [setBottomH]);
+
+  const tab = ws.tab;
+  const bottomTab: BottomTab = tab === "flow" || tab === "doc" ? "problems" : tab;
+
+  const panel = (t: BottomTab): ReactNode => {
+    switch (t) {
+      case "problems": return <ProblemsPanel />;
+      case "tests": return <TestsPanel />;
+      case "trace": return <TracePanel />;
+      case "reality": return <LazyPage><RealityPage /></LazyPage>;
+      case "graph": return <LazyPage><GraphPage /></LazyPage>;
+      case "extraction": return <LazyPage><IRReviewPage /></LazyPage>;
+      case "pipeline": return <LazyPage><PipelineCard run={ws.run} /></LazyPage>;
+      case "doc": return <DocPane />;
+      case "flow": return <Flow />;
+    }
+  };
+
+  const bottomTabs: { id: BottomTab; label: string; count?: number; icon: "warning" | "flask" | "play" | "database" | "git" | "file" | "layers" }[] = [
+    { id: "problems", label: "Problems", count: ws.findings.length, icon: "warning" },
+    { id: "tests", label: "Tests", count: ws.testrun?.total, icon: "flask" },
+    { id: "trace", label: "Trace", icon: "play" },
+    { id: "reality", label: "Reality", icon: "database" },
+    { id: "graph", label: "Graph / Cypher", icon: "git" },
+    { id: "extraction", label: "Extraction", icon: "file" },
+    { id: "pipeline", label: "Pipeline", icon: "layers" },
+  ];
+
+  // Selecting on desktop while viewing a long panel keeps the Problems tab visible.
+  return (
+    <div className="flex h-[calc(100dvh-3.5rem)] min-h-[560px] flex-col">
+      <Toolbar />
+      {desktop ? (
+        <div ref={container} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1">
+            <aside className="min-w-0 shrink-0 overflow-hidden bg-white" style={{ width: docW }} aria-label="Document">
+              <DocPane />
+            </aside>
+            <Splitter orientation="vertical" onDrag={clampDoc} value={docW} min={220} max={900} label="Resize document pane" />
+            <section className="min-w-0 flex-1 bg-slate-50" aria-label="Flowchart">
+              <Flow />
+            </section>
+          </div>
+          <Splitter orientation="horizontal" onDrag={clampBottom} value={bottomH} min={120} max={900} label="Resize bottom panel" />
+          <section className="flex shrink-0 flex-col bg-white" style={{ height: bottomH }} aria-label="Analysis panels">
+            <div className="border-b border-slate-200 px-2">
+              <Tabs tabs={bottomTabs} value={bottomTab} onChange={ws.setTab} label="Analysis panels" />
+            </div>
+            <div className="min-h-0 flex-1" role="tabpanel" id={`panel-${bottomTab}`} aria-labelledby={`tab-${bottomTab}`}>
+              {panel(bottomTab)}
+            </div>
+          </section>
         </div>
-        <p className="text-sm text-slate-600">{stage.description}</p>
-        {message && <p className={cx("mt-1 text-sm", state === "failed" ? "text-red-700" : "text-slate-700")}>{message}</p>}
-        {stage.key === "ingest" && artifact !== undefined && (
-          <IngestResults artifact={artifact as { documents?: IngestedDocument[] }} />
-        )}
-        {progress.length > 0 && state !== "running" && (
-          <details className="mt-1">
-            <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">log ({progress.length})</summary>
-            <ul className="mt-1 space-y-0.5 font-mono text-xs text-slate-600">
-              {progress.map((e) => <li key={e.id}>{e.message}</li>)}
-            </ul>
-          </details>
-        )}
-        {artifact !== undefined && (
-          <details className="mt-1">
-            <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">artifact</summary>
-            <pre className="mt-1 overflow-x-auto rounded bg-slate-50 p-2 font-mono text-xs text-slate-700">
-              {JSON.stringify(artifact, null, 2)}
-            </pre>
-          </details>
-        )}
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col bg-white">
+          <div className="border-b border-slate-200 px-1">
+            <Tabs
+              label="Workspace views"
+              value={tab}
+              onChange={ws.setTab}
+              tabs={[
+                { id: "problems", label: "Problems", count: ws.findings.length },
+                { id: "flow", label: "Flowchart" },
+                { id: "doc", label: "Document" },
+                { id: "tests", label: "Tests", count: ws.testrun?.total },
+                { id: "trace", label: "Trace" },
+                { id: "reality", label: "Reality" },
+                { id: "graph", label: "Graph" },
+                { id: "extraction", label: "Extraction" },
+                { id: "pipeline", label: "Pipeline" },
+              ]}
+            />
+          </div>
+          <div className="min-h-0 flex-1" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+            {panel(tab)}
+          </div>
+        </div>
+      )}
+      <ExplainDialog />
+    </div>
+  );
+}
+
+function Flow() {
+  const ws = useWorkspace();
+  if (ws.loading || (!ws.flow && !ws.ready))
+    return (
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-500">
+        <Spinner /> Building flowchart...
       </div>
-    </li>
+    );
+  if (!ws.flow || ws.flow.nodes.length === 0)
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-sm text-slate-600">
+        <Icon name="flag" size={28} className="text-slate-400" />
+        <p>No flowchart could be built: the extraction did not produce any steps.</p>
+      </div>
+    );
+  return (
+    <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-sm text-slate-500"><Spinner /> Loading flowchart...</div>}>
+      <FlowChart flow={ws.flow} />
+    </Suspense>
   );
 }

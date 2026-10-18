@@ -1,0 +1,21 @@
+{
+  "id": "leave",
+  "docNo": "LVE-008",
+  "title": "Annual Leave Request Procedure",
+  "language": "en",
+  "domain": "Human resources (clean control document)",
+  "organisation": "Meridian Trust Bank Ltd.",
+  "specSection": null,
+  "files": {
+    "text": "sop.md",
+    "pdf": "LVE-008_Annual_Leave_Request_Procedure_v2.0.pdf",
+    "docx": "LVE-008_Annual_Leave_Request_Procedure_v2.0.docx"
+  },
+  "totals": {
+    "errors": 0,
+    "warnings": 0,
+    "info": 0
+  },
+  "planted": [],
+  "notes": "Control document with no planted defects. Any error reported on it is a false positive. Bands are gap-free (10 or fewer / more than 10), the balance check is two-sided, and 2 working days (48h) fits inside the 3-working-day (72h) deadline."
+}

@@ -1,0 +1,11 @@
+{
+ "id": "incident",
+ "title": "Workplace Incident Reporting and Investigation Procedure",
+ "doc_code": "INC-007",
+ "industry": "Manufacturing health, safety & environment",
+ "language": "en",
+ "description": "A reporting threshold has a gap, and a reviewer cannot review their own incident.",
+ "planted_bugs": 4,
+ "file": "INC-007_Workplace_Incident_Reporting_and_Investigation_v1.2.pdf",
+ "text_file": "sop.md"
+}

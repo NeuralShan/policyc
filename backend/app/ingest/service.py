@@ -14,6 +14,7 @@ from app.core.llm.gateway import CallContext
 from app.core.services import Services
 from app.ingest.assemble import ParsedDocument, assemble
 from app.ingest.diagrams import read_diagrams
+from app.ingest.capabilities import LITE_MESSAGE, can_parse, full_parsing
 from app.ingest.docling_parser import DoclingParser
 from app.ingest.ocr_check import verify_ocr
 from app.ingest.profile import profile_document
@@ -54,7 +55,13 @@ class Ingestor:
         return self.services.storage.path(document.storage_key)
 
     def parser_name(self, document: Document) -> str:
-        return TEXT_PARSER if document.media_type == "text/plain" else self.docling.name
+        if document.media_type == "text/plain" or (
+            document.media_type == "text/markdown" and not full_parsing()
+        ):
+            return TEXT_PARSER  # lite mode reads Markdown with the built-in text parser
+        if not can_parse(document.media_type):
+            raise RuntimeError(LITE_MESSAGE)
+        return self.docling.name
 
     def parse(self, document: Document) -> ParsedDocument:
         parser = self.parser_name(document)
@@ -64,7 +71,7 @@ class Ingestor:
             if cached is not None:
                 return ParsedDocument.model_validate(cached.payload)
         path = self.source_path(document)
-        if document.media_type == "text/plain":
+        if parser == TEXT_PARSER:
             parsed = parse_text(path)
         else:
             parsed = self.docling.parse(path, document.media_type)

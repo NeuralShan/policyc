@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.api.deps import DocumentDep, ProjectDep, ServicesDep, SessionDep
 from app.core.storage import UploadTooLarge
+from app.ingest.capabilities import LITE_MESSAGE, can_parse
 from app.models import Document, DocumentAST
 from app.schemas.api import DocumentOut, DocumentUploadOut, DocumentWithParse, ParseSummary
 from app.schemas.docast import DocAST
@@ -46,6 +47,8 @@ def upload_documents(
         if suffix not in SOURCE_MEDIA_TYPES:
             allowed = ", ".join(sorted(SOURCE_MEDIA_TYPES))
             raise HTTPException(415, f"{filename}: unsupported file type (allowed: {allowed})")
+        if not can_parse(SOURCE_MEDIA_TYPES[suffix]):
+            raise HTTPException(415, f"{filename}: {LITE_MESSAGE}")
         batch.append((upload, filename, suffix))
 
     results: list[DocumentUploadOut] = []

@@ -24,6 +24,7 @@ class CompileState(TypedDict):
     run_id: str
     project_id: str
     document_ids: list[str]
+    auto_approve: bool
     artifacts: Annotated[dict[str, Any], operator.or_]
 
 

@@ -5,7 +5,6 @@ description = "Compiles organizational documents (SOPs, policies) into an execut
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.0",
-    "docling>=2.139.0",
     "fastapi>=0.143.2",
     "langchain-core>=1.6.11",
     "langchain-google-genai>=4.4.2",
@@ -21,11 +20,20 @@ dependencies = [
 ]
 
 [dependency-groups]
+# Full document parsing (PDF/DOCX/HTML with page layout, OCR). Heavy: pulls in PyTorch (several GB).
+# Included by default for development; the free-tier "lite" image leaves it out
+# (`uv export --no-group full`, see requirements-lite.txt and Dockerfile.render).
+full = [
+    "docling>=2.139.0",
+]
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
 ]
+
+[tool.uv]
+default-groups = ["dev", "full"]
 
 [tool.ruff]
 line-length = 100

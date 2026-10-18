@@ -1,0 +1,69 @@
+Savings Account Opening Procedure
+
+ACC-002 · Version 1.4 · Standard Operating Procedure
+
+Document control
+
+Document No. | ACC-002 | Version | 1.4
+Status | Approved - Effective | Classification | Internal
+Effective date | 15-Aug-2026 | Next review date | 14-Aug-2027
+Document owner | Head - Retail Banking | Supersedes | v1.3 dated 02-Jan-2026
+Department | Retail Banking - Branch Operations
+
+Review and approval
+
+Role | Name | Designation | Date | Signature
+Prepared by | Sneha Patil | Manager - Branch Operations | 28-Jul-2026 | e-signed (DMS)
+Reviewed by | Arjun Bhatt | Compliance Officer - KYC/AML | 05-Aug-2026 | e-signed (DMS)
+Approved by | Meera Nair | Head - Retail Banking | 11-Aug-2026 | e-signed (DMS)
+
+Definitions
+
+Term | Meaning
+KYC | Know Your Customer - the process of verifying the identity and address of a customer.
+Branch officer | A customer service officer authorised to open accounts at a branch.
+Officially valid document | A document accepted by the Bank as proof of identity or address.
+Guardian | A parent or court-appointed guardian who operates the account on behalf of a minor.
+
+Revision history
+
+Version | Date | Author | Description of change
+v1.0 | 20-Feb-2023 | S. Patil | Initial issue.
+v1.3 | 02-Jan-2026 | S. Patil | Risk assessment step introduced (Section 4).
+v1.4 | 15-Aug-2026 | S. Patil | Section 9 (Accounts for minors) withdrawn pending regulatory update; account opening timeline added (clause 5.1).
+
+Distribution
+
+The controlled copy of this document is held in the Document Management System (DMS). Printed or downloaded copies are uncontrolled; check the DMS for the current version before use.
+
+1 Purpose
+
+1.1 This procedure describes how a branch opens a savings account for an individual customer.
+
+2 Eligibility
+
+2.1 Applicants must be 18 years of age or older.
+
+2.2 Minors aged below 10 years are not eligible to open an account. Minors aged 10 years and above may open an account jointly with a guardian, as described in Section 9.
+
+3 Know Your Customer (KYC)
+
+3.1 The branch officer collects proof of identity and proof of address from the applicant.
+
+3.2 If both documents are verified, the application proceeds to risk assessment.
+
+3.3 If either document cannot be verified, the application is rejected.
+
+4 Risk assessment
+
+4.1 The branch officer assigns a risk rating of low, medium or high.
+
+4.2 Low-risk applications are approved and the account is opened.
+
+4.3 High-risk applications are referred to the Branch Manager.
+
+4.4 The Branch Manager approves or rejects referred applications within 2 working days.
+
+5 Account opening
+
+5.1 The account must be opened within 3 working days of receiving a complete application.

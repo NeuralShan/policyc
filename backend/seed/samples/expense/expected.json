@@ -1,0 +1,82 @@
+{
+  "id": "expense",
+  "docNo": "EXP-001",
+  "title": "Employee Expense Reimbursement Policy",
+  "language": "en",
+  "domain": "Banking / corporate finance operations",
+  "organisation": "Meridian Trust Bank Ltd.",
+  "specSection": "16.1",
+  "files": {
+    "text": "sop.md",
+    "pdf": "EXP-001_Employee_Expense_Reimbursement_Policy_v3.0.pdf",
+    "docx": "EXP-001_Employee_Expense_Reimbursement_Policy_v3.0.docx"
+  },
+  "totals": {
+    "errors": 5,
+    "warnings": 2,
+    "info": 0
+  },
+  "planted": [
+    {
+      "code": "E102",
+      "clauses": [
+        "C4.1",
+        "C4.2",
+        "C4.3",
+        "C4.4"
+      ],
+      "bug": "'below 10,000' + 'above 10,000' leaves exactly INR 10,000 unhandled for staff",
+      "witness": "amount=10000, requester_role=staff"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C4.1",
+        "C4.3"
+      ],
+      "bug": "A manager's claim under 10,000 matches both C4.1 (line manager) and C4.3 (Finance Head)",
+      "witness": "amount=9999, requester_role=manager"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C4.1",
+        "C4.4"
+      ],
+      "bug": "The Finance Head's claim under 10,000 matches both C4.1 and C4.4",
+      "witness": "amount=9999, requester_role=finance_head"
+    },
+    {
+      "code": "E104",
+      "clauses": [
+        "C4.4",
+        "C7.1"
+      ],
+      "bug": "Finance Head must approve own claim, but self-approval is forbidden and there is one Finance Head",
+      "witness": "amount=10000, requester_role=finance_head"
+    },
+    {
+      "code": "E101",
+      "clauses": [
+        "C6.1"
+      ],
+      "bug": "Nothing defines how the Audit Committee escalates, so Internal Audit re-review is unreachable"
+    },
+    {
+      "code": "W204",
+      "clauses": [
+        "C4.5",
+        "C5.1",
+        "C5.2"
+      ],
+      "bug": "3 working days + 5 working days (192h) > 7 calendar days (168h)"
+    },
+    {
+      "code": "W201",
+      "clauses": [
+        "C7.2"
+      ],
+      "bug": "'promptly', 'where appropriate'"
+    }
+  ]
+}

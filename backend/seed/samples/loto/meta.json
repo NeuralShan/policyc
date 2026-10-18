@@ -1,0 +1,11 @@
+{
+ "id": "loto",
+ "title": "Lockout/Tagout Procedure for Machine Maintenance",
+ "doc_code": "LOTO-003",
+ "industry": "Manufacturing safety",
+ "language": "en",
+ "description": "An exception clause lets a worker skip the zero-energy verification step: a safety bypass.",
+ "planted_bugs": 2,
+ "file": "LOTO-003_Lockout_Tagout_Procedure_v2.1.pdf",
+ "text_file": "sop.md"
+}

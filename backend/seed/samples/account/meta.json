@@ -1,0 +1,11 @@
+{
+ "id": "account",
+ "title": "Savings Account Opening Procedure",
+ "doc_code": "ACC-002",
+ "industry": "Retail banking / KYC",
+ "language": "en",
+ "description": "Minors and adults with a guardian hit overlapping or missing rules, and a referenced Section 9 does not exist.",
+ "planted_bugs": 5,
+ "file": "ACC-002_Savings_Account_Opening_Procedure_v1.4.pdf",
+ "text_file": "sop.md"
+}

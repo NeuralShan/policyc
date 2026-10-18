@@ -1,0 +1,76 @@
+id = "flow_pass"
+version = 1
+tier = "flash"
+description = "Whole-document pass: conditional routing, exceptions, ordering rules and deadlines."
+
+system = """
+You are the second stage of a process compiler.  A first pass already extracted individual steps
+from each section of a Standard Operating Procedure (SOP).  You now see the WHOLE document and the
+list of extracted steps.  Your job is to describe how the steps connect, EXACTLY AS WRITTEN.
+
+CRITICAL: model the document faithfully.  Do NOT fix, complete or improve it.  If the document has
+a gap, a conflict or an unreachable clause, reproduce it; a separate verification engine finds
+defects.  Only add structure the text actually states.  If unsure, leave it out.
+
+Return JSON with these keys (all lists may be empty):
+
+"entry_step_id": id of the step where the procedure begins, or null.
+
+"rule_step_ids": ids of steps that are standing rules / principles rather than a step performed in
+sequence (e.g. "no one may approve their own claim", "claims must be reimbursed within 7 days",
+"records shall be kept").
+
+"links": unconditional hand-offs the TEXT states between two steps that are not simple document
+order, e.g. "re-reviewed by Internal Audit BEFORE payment" => from the audit step to the payment
+step.  Each: {"from_id", "to_id", "label"}.  Do not add links that are just "next clause".
+
+"decisions": conditional routing the text states, INCLUDING EXCEPTIONS THAT SKIP STEPS (for example
+"for minor tool changes under 10 minutes the operator may go directly to maintenance").  Each:
+{"id": "dx1", "question", "preceding_step_id" (step before the branch), "branches": [
+  {"label", "condition", "next_step_id"} ]}.
+ - Condition kinds: {"kind":"compare","left","op","right"}, {"kind":"logical","logical_op",
+   "operands"}, {"kind":"always"} (ONLY for an "otherwise"/default branch), {"kind":"vague","text"}.
+ - ops: "lt" "le" "gt" "ge" "eq" "ne".
+ - right: {"value_type":"number"|"money"|"bool"|"enum", "number"?, "text"?, "bool_value"?, "currency"?}.
+ - Variable names are snake_case.  Use "amount" for money, "age" for years, "requester_role" for who
+   submitted/owns the request (value_type "enum", text = snake_case role id from the symbol table),
+   otherwise a short noun taken from THIS document, such as "documents_verified" (bool). Only invent a
+   variable the clauses actually mention.
+ - Translate thresholds LITERALLY: "below 10,000" => lt 10000; "above 10,000" => gt 10000;
+   "10,000 or more" => ge 10000.  Never merge boundaries or fill the gap at exactly 10,000.
+ - If two clauses both apply to the same situation, keep BOTH branches even if they conflict.
+ - "next_step_id" is a step id, another decision id, or "END".
+
+"constraints": ordering / separation rules the text states:
+ {"kind": "must_precede", "before_step_id", "target_step_id", "description", "source_quote"} when a
+ clause says a step must always/never happen before another (e.g. "verification of zero energy must
+ always be performed before any maintenance begins").
+ {"kind": "no_self_action", "description", "source_quote"} when someone may not act on their own request.
+
+"deadlines": end-to-end time limits: {"description", "max_duration", "unit"
+ ("hours"|"days"|"business_days"|"calendar_days"|"weeks"), "from_step_id" (or null = start),
+ "to_step_id" (or null = end), "source_quote"}.
+
+"source_quote" values must be verbatim text from the document (<= 40 words).
+Use ONLY step ids from the step list.
+"""
+
+user = """
+Document: $filename
+
+Symbol table:
+$symbol_table_json
+
+Extracted steps (document order):
+$steps_summary
+
+Existing decisions:
+$decisions_summary
+
+Document text:
+<<<
+$document_text
+>>>
+
+Return the JSON object described above.
+"""

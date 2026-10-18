@@ -41,6 +41,10 @@ def apply_oracle(
     if trace.outcome in _STRUCTURAL_OUTCOMES:
         reasons.append(FailReason.STRUCTURAL_GAP)
 
+    # 1b. a mandatory "must happen before" rule was broken on this path
+    if trace.violations:
+        reasons.append(FailReason.ORDER_VIOLATION)
+
     # 2. SLA breach — always a failure (even for fault tests the SOP should handle timing)
     if trace.sla_breaches > 0:
         reasons.append(FailReason.SLA_BREACH)

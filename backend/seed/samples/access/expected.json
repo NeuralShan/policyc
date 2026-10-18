@@ -1,0 +1,72 @@
+{
+  "id": "access",
+  "docNo": "IAM-005",
+  "title": "User Access Request and Provisioning Procedure",
+  "language": "en",
+  "domain": "IT / information security (enterprise)",
+  "organisation": "Meridian Trust Bank Ltd.",
+  "specSection": null,
+  "files": {
+    "text": "sop.md",
+    "pdf": "IAM-005_User_Access_Request_and_Provisioning_Procedure_v4.2.pdf",
+    "docx": "IAM-005_User_Access_Request_and_Provisioning_Procedure_v4.2.docx"
+  },
+  "totals": {
+    "errors": 4,
+    "warnings": 2,
+    "info": 0
+  },
+  "planted": [
+    {
+      "code": "E103",
+      "clauses": [
+        "C4.1",
+        "C4.3"
+      ],
+      "bug": "A contractor's standard request matches both C4.1 (application owner) and C4.3 (Vendor Management)",
+      "witness": "access_level=standard, user_type=contractor"
+    },
+    {
+      "code": "E103",
+      "clauses": [
+        "C4.2",
+        "C4.3"
+      ],
+      "bug": "A contractor's privileged request matches both C4.2 and C4.3",
+      "witness": "access_level=privileged, user_type=contractor"
+    },
+    {
+      "code": "E108",
+      "clauses": [
+        "C5.2",
+        "C5.3"
+      ],
+      "bug": "Emergency path grants access before application-owner approval, violating C5.3",
+      "witness": "emergency=true, access_level=privileged"
+    },
+    {
+      "code": "E101",
+      "clauses": [
+        "C6.1"
+      ],
+      "bug": "Nothing connects recertification to the request flow, so 'Revoke access' is unreachable"
+    },
+    {
+      "code": "W204",
+      "clauses": [
+        "C4.4",
+        "C5.1",
+        "C5.4"
+      ],
+      "bug": "Privileged path: 2 + 2 + 1 working days (120h) > 3 working days (72h)"
+    },
+    {
+      "code": "W201",
+      "clauses": [
+        "C7.1"
+      ],
+      "bug": "'as appropriate'"
+    }
+  ],
+  "notes": "Standard (non-contractor) path is 2 + 1 working days = 72h and must NOT raise W204."
+}

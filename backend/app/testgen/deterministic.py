@@ -7,8 +7,11 @@ Also generates one happy-path scenario per process.
 
 from __future__ import annotations
 
+import itertools
+import random
 import re
 
+from app.logic import ConstraintBuilder, display_value
 from app.schemas.ir_sop import (
     CompareCondition,
     ConditionExpr,
@@ -136,4 +139,86 @@ def generate_path_tests(ir: SopIR) -> list[TestCase]:
                 tags=["path:happy"],
             )
         )
+    return tests
+
+
+def _process_conditions(proc) -> list[ConditionExpr]:
+    conds: list[ConditionExpr] = []
+    for dec in proc.decisions:
+        conds.extend(b.condition for b in dec.branches)
+    conds.extend(t.condition for t in proc.transitions)
+    return conds
+
+
+def combination_domain(proc) -> tuple[ConstraintBuilder, dict[str, list]]:
+    """Per-variable test values: thresholds ±1 for numbers, every enum value, both booleans."""
+    builder = ConstraintBuilder()
+    conds = _process_conditions(proc)
+    for c in conds:
+        builder.scan(c)
+    thresholds: dict[str, set[float]] = {}
+    for c in conds:
+        _collect_thresholds(c, thresholds)
+    domain: dict[str, list] = {}
+    for var, kind in sorted(builder.kinds.items()):
+        if kind == "num":
+            vals = {0.0}
+            for t in thresholds.get(var, set()):
+                vals.update({t - 1, t, t + 1})
+            domain[var] = sorted(v for v in vals if v >= 0)
+        elif kind == "bool":
+            domain[var] = [True, False]
+        else:
+            domain[var] = list(builder.enum_values.get(var, ["other"]))
+    return builder, domain
+
+
+def generate_combination_tests(ir: SopIR, cap: int = 150) -> list[TestCase]:
+    """Complete assignments over every variable (boundary values × enum values × booleans).
+
+    These are the scenarios that expose gaps and conflicts at run time: a claim of exactly 10,000, a
+    manager's claim just under the threshold, the Finance Head's own claim.
+    """
+    tests: list[TestCase] = []
+    for proc in ir.processes:
+        builder, domain = combination_domain(proc)
+        if not domain:
+            continue
+        names = list(domain)
+        size = 1
+        for v in domain.values():
+            size *= len(v)
+        if size <= cap:
+            combos = list(itertools.product(*(domain[n] for n in names)))
+        else:
+            rng = random.Random(42)
+            base = [domain[n][0] for n in names]
+            combos_set = {tuple(base)}
+            for i, n in enumerate(names):  # vary one variable at a time around the baseline
+                for v in domain[n]:
+                    c = list(base)
+                    c[i] = v
+                    combos_set.add(tuple(c))
+            while len(combos_set) < cap:
+                combos_set.add(tuple(rng.choice(domain[n]) for n in names))
+            combos = sorted(combos_set, key=str)
+        for i, combo in enumerate(combos):
+            facts = dict(zip(names, combo, strict=True))
+            sc_id = f"sc_combo_{_slug(proc.id)}_{i:03d}"
+            label = ", ".join(f"{k}={display_value(v)}" for k, v in facts.items())
+            tests.append(
+                TestCase(
+                    id=sc_id,
+                    description=f"Combination: {label}",
+                    origin=TestOrigin.BOUNDARY,
+                    process_id=proc.id,
+                    scenario=Scenario(
+                        id=sc_id,
+                        description=label,
+                        process_id=proc.id,
+                        facts=facts,
+                    ),
+                    tags=["combo", *[f"var:{n}" for n in names]],
+                )
+            )
     return tests

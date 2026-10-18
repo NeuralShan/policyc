@@ -9,13 +9,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import documents, meta, projects, runs
+from app import auth
+from app.api import documents, insight, meta, projects, runs
 from app.core.config import BACKEND_DIR, Settings
 from app.core.db import run_migrations
 from app.core.llm.gateway import ModelFactory
 from app.core.services import Services
 from app.pipeline.checkpointer import open_sqlite_checkpointer
 from app.pipeline.executor import RunExecutor
+from app.seed import load_seed
 from app.pipeline.graph import build_compile_graph
 
 FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"
@@ -30,6 +32,7 @@ def create_app(settings: Settings | None = None, model_factory: ModelFactory | N
         if settings.auto_migrate:
             run_migrations(settings.resolved_database_url)
         services = Services.build(settings, model_factory)
+        load_seed(services)
         checkpointer, checkpoint_conn = open_sqlite_checkpointer(settings.resolved_checkpoint_path)
         executor = RunExecutor(
             services, build_compile_graph(services, checkpointer), settings.executor_workers
@@ -45,13 +48,16 @@ def create_app(settings: Settings | None = None, model_factory: ModelFactory | N
             services.engine.dispose()
 
     app = FastAPI(title="Policy Compiler", version="0.1.0", lifespan=lifespan)
+    app.state.settings = settings
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origin_regex=settings.cors_origin_regex,
+        allow_credentials=False,  # auth uses a bearer token, never cookies
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
-    for module in (meta, projects, documents, runs):
+    for module in (meta, auth, projects, documents, runs, insight):
         app.include_router(module.router)
 
     @app.api_route("/api/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
@@ -59,7 +65,8 @@ def create_app(settings: Settings | None = None, model_factory: ModelFactory | N
         # Keeps unknown /api URLs a JSON 404 instead of falling through to the SPA's index.html.
         raise HTTPException(404, "Not Found")
 
-    if FRONTEND_DIST.is_dir():
+    built = (FRONTEND_DIST / "index.html").is_file()
+    if built and (settings.serve_ui is None or settings.serve_ui):
         app.frontend("/", directory=FRONTEND_DIST)  # built UI; in dev, Vite serves it instead
     return app
 

@@ -168,7 +168,7 @@ function TestResultRow({ result }: { result: TestResult }) {
             {result.trace.outcome}
           </Badge>
         )}
-        <span className="shrink-0 text-xs text-slate-400">{open ? "▲" : "▼"}</span>
+        <span className="shrink-0 text-xs text-slate-500">{open ? "▲" : "▼"}</span>
       </button>
 
       {open && result.trace && (
@@ -180,15 +180,15 @@ function TestResultRow({ result }: { result: TestResult }) {
           <ol className="space-y-1">
             {result.trace.steps.map((ts) => (
               <li key={ts.seq} className="flex items-center gap-2">
-                <span className="shrink-0 text-slate-400">{ts.seq + 1}.</span>
+                <span className="shrink-0 text-slate-500">{ts.seq + 1}.</span>
                 <Mono className="text-slate-500">{ts.node_id}</Mono>
-                <span className="text-slate-400">{ts.node_kind}</span>
+                <span className="text-slate-500">{ts.node_kind}</span>
                 {ts.action && <span className="truncate text-slate-700">{ts.action}</span>}
                 {ts.branch_taken && (
-                  <span className="text-amber-600">→ {ts.branch_taken}</span>
+                  <span className="text-amber-700">{ts.branch_taken}</span>
                 )}
                 {ts.step_status && ts.step_status !== "ok" && (
-                  <span className="text-red-600">[{ts.step_status}]</span>
+                  <span className="text-red-700">[{ts.step_status}]</span>
                 )}
               </li>
             ))}
@@ -234,10 +234,10 @@ export function TestRunPage() {
         actions={
           <div className="flex gap-3">
             <Link to={`/runs/${runId}/tests`} className="text-sm text-slate-600 hover:text-slate-900">
-              ← Test Suite
+               Test Suite
             </Link>
             <Link to={`/runs/${runId}`} className="text-sm text-slate-600 hover:text-slate-900">
-              ← Run
+               Run
             </Link>
           </div>
         }
@@ -299,7 +299,7 @@ export function TestRunPage() {
                       className={cx(
                         "rounded px-2 py-0.5 text-xs capitalize",
                         filter === v
-                          ? "bg-slate-700 text-white"
+                          ? "bg-indigo-600 text-white"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                       )}
                     >
@@ -311,9 +311,9 @@ export function TestRunPage() {
             }
           >
             {query.isLoading ? (
-              <p className="text-sm text-slate-400">Loading…</p>
+              <p className="text-sm text-slate-500">Loading…</p>
             ) : filtered.length === 0 ? (
-              <p className="text-sm italic text-slate-400">No results.</p>
+              <p className="text-sm italic text-slate-500">No results.</p>
             ) : (
               <div>
                 {filtered.map((r) => (
@@ -325,7 +325,7 @@ export function TestRunPage() {
         </>
       )}
 
-      {query.isLoading && <p className="text-sm text-slate-400">Loading…</p>}
+      {query.isLoading && <p className="text-sm text-slate-500">Loading…</p>}
     </>
   );
 }

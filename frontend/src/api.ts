@@ -501,6 +501,8 @@ export interface EvidenceItem {
   fail_reason?: string | null;
   case_count?: number | null;
   rate?: number | null;
+  counterexample?: Record<string, unknown> | null;
+  witness?: Record<string, unknown> | null;
 }
 
 export interface RiskScore {
@@ -523,6 +525,11 @@ export interface AggregatedFinding {
   evidence: EvidenceItem[];
   risk: RiskScore;
   rank: number;
+  // Optional fields the backend may add; always read defensively.
+  witness?: Record<string, unknown> | string | null;
+  clause_quote?: string | null;
+  suggested_fix?: string | null;
+  fingerprint?: string | null;
 }
 
 export interface FindingsReport {
@@ -532,10 +539,143 @@ export interface FindingsReport {
   stats: Record<string, unknown>;
 }
 
+
+// --- Demo workspace contract (samples, flow, health, explain/fix, regression) -------------------
+export interface Sample {
+  id: string;
+  title: string;
+  description: string;
+  industry: string;
+  planted_bugs: number;
+  precomputed: boolean;
+  language?: string;
+}
+
+export interface MeInfo {
+  auth_enabled: boolean;
+  uid: string | null;
+  email: string | null;
+  name: string | null;
+  picture: string | null;
+}
+
+export interface FlowNode {
+  id: string;
+  kind: "step" | "decision" | "terminal";
+  label: string;
+  number: string | null;
+  actor: string | null;
+  modal: string | null;
+  quote: string | null;
+  char_start: number | null;
+  char_end: number | null;
+  document_id: string | null;
+  severity: "error" | "warning" | "info" | null;
+  finding_ids: string[];
+  codes: string[];
+  inferred: boolean;
+  unreachable?: boolean;
+}
+export interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  label: string | null;
+  kind: "flow" | "branch";
+  inferred: boolean;
+}
+export interface FlowGraph {
+  run_id: string;
+  process_id: string;
+  entry: string | null;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+export interface Health {
+  score: number;
+  grade: "A" | "B" | "C" | "D" | "F";
+  errors: number;
+  warnings: number;
+  infos: number;
+  tests: { total: number; passed: number; failed: number };
+  coverage: { steps: number; decisions: number; branches: number };
+}
+
+export interface ExplainPatch {
+  id: string;
+  clause_ref: string | null;
+  original_text: string;
+  new_text: string;
+  rationale: string;
+}
+export interface Explanation {
+  finding_id: string;
+  plain_explanation: string;
+  impact: string;
+  patches: ExplainPatch[];
+}
+export interface ApplyPatchesResult {
+  run_id: string;
+  base_run_id: string;
+  document_id: string;
+}
+export interface FindingSummary {
+  id: string;
+  code: string;
+  title: string;
+  severity: "error" | "warning" | "info";
+  step_id: string | null;
+}
+export interface Regression {
+  base_run_id: string;
+  run_id: string;
+  counts: { fixed: number; new: number; remaining: number };
+  fixed: FindingSummary[];
+  new: FindingSummary[];
+  remaining: FindingSummary[];
+  health: { before: number; after: number };
+}
+
 export const ACCEPTED_SOURCE_TYPES = [".pdf", ".docx", ".html", ".htm", ".md", ".txt"];
 
+export const API_BASE: string = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
+
+/** Error thrown for every non-2xx response; `status` lets callers special-case 404/401. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+// --- auth plumbing (set by auth/AuthProvider) -------------------------------------------------
+let tokenProvider: (() => Promise<string | null>) | null = null;
+export function setTokenProvider(fn: (() => Promise<string | null>) | null) {
+  tokenProvider = fn;
+}
+const unauthorizedListeners = new Set<(message: string) => void>();
+export function onUnauthorized(fn: (message: string) => void) {
+  unauthorizedListeners.add(fn);
+  return () => {
+    unauthorizedListeners.delete(fn);
+  };
+}
+export async function currentToken(): Promise<string | null> {
+  try {
+    return tokenProvider ? await tokenProvider() : null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init);
+  const token = await currentToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(API_BASE + path, { ...init, headers });
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
     try {
@@ -544,9 +684,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // non-JSON error body; keep the status line
     }
-    throw new Error(detail);
+    if (response.status === 401) unauthorizedListeners.forEach((fn) => fn(detail));
+    throw new ApiError(detail, response.status);
   }
   return response.status === 204 ? (undefined as T) : response.json();
+}
+
+async function requestText(path: string): Promise<string> {
+  const token = await currentToken();
+  const response = await fetch(API_BASE + path, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+  if (!response.ok) throw new ApiError(`${response.status} ${response.statusText}`, response.status);
+  return response.text();
+}
+
+/** Run an optional endpoint; a 404 (feature not deployed / nothing yet) resolves to null. */
+export async function orNull<T>(p: Promise<T>): Promise<T | null> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return null;
+    throw e;
+  }
 }
 
 const json = (body: unknown): RequestInit => ({
@@ -568,7 +726,7 @@ export const api = {
     request<DocumentWithParse[]>(`/api/projects/${projectId}/documents`),
   document: (id: string) => request<DocumentWithParse>(`/api/documents/${id}`),
   documentAst: (id: string) => request<DocAST>(`/api/documents/${id}/ast`),
-  figureUrl: (documentId: string, nodeId: string) => `/api/documents/${documentId}/figures/${nodeId}`,
+  figureUrl: (documentId: string, nodeId: string) => `${API_BASE}/api/documents/${documentId}/figures/${nodeId}`,
   uploadDocuments: (projectId: string, files: File[]) => {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
@@ -578,19 +736,24 @@ export const api = {
     });
   },
   deleteDocument: (id: string) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
-  documentFileUrl: (id: string) => `/api/documents/${id}/file`,
+  documentFileUrl: (id: string) => `${API_BASE}/api/documents/${id}/file`,
 
   runs: (projectId: string) => request<Run[]>(`/api/projects/${projectId}/runs`),
   run: (id: string) => request<RunDetail>(`/api/runs/${id}`),
-  startRun: (projectId: string) => request<Run>(`/api/projects/${projectId}/runs`, json({})),
-  runEventsUrl: (id: string) => `/api/runs/${id}/events`,
+  startRun: (projectId: string, autoApprove = true) =>
+    request<Run>(`/api/projects/${projectId}/runs`, json({ auto_approve: autoApprove })),
+  /** SSE cannot send headers, so the id token travels as a query parameter. */
+  runEventsUrl: async (id: string) => {
+    const token = await currentToken();
+    return `${API_BASE}/api/runs/${id}/events${token ? `?access_token=${encodeURIComponent(token)}` : ""}`;
+  },
 
   runIr: (runId: string) => request<IRReviewOut>(`/api/runs/${runId}/ir`),
   reviewIr: (runId: string, approved: boolean, overrides: Record<string, unknown> = {}) =>
     request<Run>(`/api/runs/${runId}/ir/review`, json({ approved, overrides })),
 
   runGraph: (runId: string) => request<GraphOut>(`/api/runs/${runId}/graph`),
-  runCypherUrl: (runId: string) => `/api/runs/${runId}/cypher`,
+  runCypherUrl: (runId: string) => `${API_BASE}/api/runs/${runId}/cypher`,
 
   runDiagnostics: (runId: string) => request<DiagnosticsReport>(`/api/runs/${runId}/diagnostics`),
 
@@ -629,7 +792,7 @@ export const api = {
   runRealityCheck: (runId: string) => request<RealityReport>(
     `/api/runs/${runId}/reality`, { method: "POST" }
   ),
-  realityReport: (runId: string) => request<RealityReport>(`/api/runs/${runId}/reality`),
+  realityReport: (runId: string) => orNull(request<RealityReport>(`/api/runs/${runId}/reality`)),
 
   // Layer 9 — findings
   runFindings: (runId: string) => request<FindingsReport>(`/api/runs/${runId}/findings`),
@@ -638,4 +801,23 @@ export const api = {
       `/api/runs/${runId}/findings/${findingId}/triage`,
       { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ triage }) },
     ),
+
+  // --- workspace contract ---
+  me: () => request<MeInfo>("/api/me"),
+  samples: () => request<Sample[]>("/api/samples"),
+  runSample: (id: string, live = false) =>
+    request<{ project_id: string; run_id: string; cached: boolean }>(
+      `/api/samples/${id}/run?live=${live}`,
+      { method: "POST" },
+    ),
+  runFlow: (runId: string) => request<FlowGraph>(`/api/runs/${runId}/flow`),
+  runHealth: (runId: string) => request<Health>(`/api/runs/${runId}/health`),
+  explainFinding: (runId: string, findingId: string) =>
+    request<Explanation>(`/api/runs/${runId}/findings/${findingId}/explain`, { method: "POST" }),
+  applyPatches: (runId: string, patches: { original_text: string; new_text: string }[]) =>
+    request<ApplyPatchesResult>(`/api/runs/${runId}/apply-patches`, json({ patches })),
+  regression: (runId: string, baseRunId: string) =>
+    request<Regression>(`/api/runs/${runId}/regression?base=${encodeURIComponent(baseRunId)}`),
+  reportText: (runId: string, format: "md" | "html") =>
+    requestText(`/api/runs/${runId}/report?format=${format}`),
 };

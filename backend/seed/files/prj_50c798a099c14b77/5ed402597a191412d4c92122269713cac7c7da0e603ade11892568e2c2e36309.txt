@@ -1,0 +1,69 @@
+Lockout/Tagout Procedure for Machine Maintenance
+
+LOTO-003 · Version 2.1 · Standard Operating Procedure
+
+Document control
+
+Document No. | LOTO-003 | Version | 2.1
+Status | Approved - Effective | Classification | Internal - Safety Critical
+Effective date | 01-Sep-2026 | Next review date | 31-Aug-2027
+Document owner | Plant Director | Supersedes | v2.0 dated 10-May-2025
+Department | Engineering & Maintenance / EHS
+
+Review and approval
+
+Role | Name | Designation | Date | Signature
+Prepared by | Daisuke Ito | Maintenance Supervisor | 14-Aug-2026 | e-signed (DMS)
+Reviewed by | Yui Sato | Site HSE Manager | 21-Aug-2026 | e-signed (DMS)
+Approved by | Takeshi Morimoto | Plant Director | 26-Aug-2026 | e-signed (DMS)
+
+Definitions
+
+Term | Meaning
+Authorized employee | A person trained and authorized to lock or tag out machines in order to service them.
+Affected employee | A person who operates or works in the area of a machine that is being serviced.
+Energy-isolating device | A device that physically prevents the transmission or release of energy, such as a disconnect switch or line valve.
+Zero energy state | The condition in which all energy sources are isolated and stored energy has been released.
+
+Revision history
+
+Version | Date | Author | Description of change
+v1.0 | 03-Feb-2021 | D. Ito | Initial issue based on the corporate energy-control standard.
+v2.0 | 10-May-2025 | D. Ito | Pneumatic and hydraulic energy added to clause 2.3.
+v2.1 | 01-Sep-2026 | D. Ito | Section 3 added: exception for minor tool changes, at the request of Production to reduce changeover time.
+
+Distribution
+
+The controlled copy of this document is held in the Document Management System (DMS). Printed or downloaded copies are uncontrolled; check the DMS for the current version before use.
+
+1 Purpose
+
+1.1 This procedure protects workers from the unexpected start-up of machinery during servicing and maintenance.
+
+2 Procedure
+
+2.1 The authorized employee notifies all affected employees that the machine will be shut down.
+
+2.2 The machine is shut down using its normal stopping procedure.
+
+2.3 All energy sources (electrical, pneumatic, hydraulic) are isolated.
+
+2.4 The authorized employee applies a personal lock and tag to every energy-isolating device.
+
+2.5 The authorized employee verifies zero energy by attempting to start the machine.
+
+2.6 Maintenance or servicing is performed.
+
+2.7 Verification of zero energy must always be performed before any maintenance or servicing begins.
+
+3 Exceptions
+
+3.1 For minor tool changes expected to take less than 10 minutes, the operator must verify zero energy before proceeding directly to maintenance after shutting down the machine.
+
+4 Restoring equipment
+
+4.1 After maintenance, the authorized employee removes tools, ensures all employees are clear, and removes their lock and tag.
+
+4.2 Only the employee who applied a lock may remove it.
+
+4.3 Equipment must be returned to service as soon as possible.

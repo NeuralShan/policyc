@@ -30,7 +30,7 @@ export function GapCodesPage() {
       <div className="grid gap-6">
         {[...byCategory].map(([category, codes]) => (
           <Card key={category} title={category}>
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
                 <tr>
                   <th className="w-20 py-2 font-medium">Code</th>
@@ -51,7 +51,7 @@ export function GapCodesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Card>
         ))}
       </div>

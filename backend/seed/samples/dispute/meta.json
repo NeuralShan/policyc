@@ -1,0 +1,11 @@
+{
+ "id": "dispute",
+ "title": "Card Transaction Dispute and Chargeback Procedure",
+ "doc_code": "DSP-004",
+ "industry": "Fintech / payments customer operations",
+ "language": "en",
+ "description": "A retry loop never ends, rules overlap, and a referenced section is missing.",
+ "planted_bugs": 7,
+ "file": "DSP-004_Card_Dispute_and_Chargeback_Procedure_v2.0.pdf",
+ "text_file": "sop.md"
+}

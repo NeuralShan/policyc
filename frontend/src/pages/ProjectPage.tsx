@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { ACCEPTED_SOURCE_TYPES, api, type UploadResult } from "../api";
+import { useWriteGuard } from "../auth/AuthProvider";
 import { PageHeader } from "../components/Layout";
 import {
   Badge,
@@ -27,10 +28,10 @@ export function ProjectPage() {
       <PageHeader
         title={project.data?.name ?? "Project"}
         subtitle={project.data?.description || <Mono>{projectId}</Mono>}
-        actions={<Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← All projects</Link>}
+        actions={<Link to="/" className="text-sm text-slate-600 hover:text-slate-900"> All projects</Link>}
       />
       <ErrorNote error={project.error} />
-      <div className="grid gap-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <Documents projectId={projectId} />
         <Runs projectId={projectId} />
       </div>
@@ -61,8 +62,9 @@ function Documents({ projectId }: { projectId: string }) {
   });
   const remove = useMutation({ mutationFn: api.deleteDocument, onSuccess: refresh });
 
+  const guard = useWriteGuard();
   const send = (files: FileList | null) => {
-    if (files && files.length > 0) upload.mutate(Array.from(files));
+    if (files && files.length > 0) guard(() => upload.mutate(Array.from(files)));
   };
   const duplicates = lastUpload?.filter((r) => r.duplicate) ?? [];
 
@@ -110,7 +112,7 @@ function Documents({ projectId }: { projectId: string }) {
       {documents.data?.length === 0 ? (
         <Empty>No documents yet.</Empty>
       ) : (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-left text-sm">
           <thead className="text-xs uppercase text-slate-500">
             <tr>
               <th className="py-2 font-medium">File</th>
@@ -128,8 +130,8 @@ function Documents({ projectId }: { projectId: string }) {
                   <Link to={`/documents/${d.id}`} className="text-slate-900 hover:underline">
                     {d.filename}
                   </Link>{" "}
-                  <a href={api.documentFileUrl(d.id)} target="_blank" rel="noreferrer" title="Open the original file" className="text-xs text-slate-400 hover:text-slate-700">
-                    ↗
+                  <a href={api.documentFileUrl(d.id)} target="_blank" rel="noreferrer" title="Open the original file" className="text-xs text-slate-500 hover:text-slate-700">
+                    Open
                   </a>
                 </td>
                 <td className="py-2">
@@ -140,7 +142,7 @@ function Documents({ projectId }: { projectId: string }) {
                       {d.parsed.stats.warnings > 0 && <Badge tone="amber">{d.parsed.stats.warnings} warnings</Badge>}
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-400">not yet</span>
+                    <span className="text-xs text-slate-500">not yet</span>
                   )}
                 </td>
                 <td className="py-2 text-slate-600">{formatBytes(d.size_bytes)}</td>
@@ -149,7 +151,7 @@ function Documents({ projectId }: { projectId: string }) {
                 <td className="py-2 text-right">
                   <Button
                     variant="danger"
-                    onClick={() => confirm(`Remove ${d.filename}?`) && remove.mutate(d.id)}
+                    onClick={() => guard(() => confirm(`Remove ${d.filename}?`) && remove.mutate(d.id))}
                   >
                     Remove
                   </Button>
@@ -157,7 +159,7 @@ function Documents({ projectId }: { projectId: string }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </Card>
   );
@@ -177,28 +179,36 @@ function Runs({ projectId }: { projectId: string }) {
       query.state.data?.some((r) => r.status === "queued" || r.status === "running") ? 1000 : false,
   });
   const start = useMutation({
-    mutationFn: () => api.startRun(projectId),
+    mutationFn: () => api.startRun(projectId, !review),
     onSuccess: (run) => {
       queryClient.invalidateQueries({ queryKey: ["runs", projectId] });
       navigate(`/runs/${run.id}`);
     },
   });
   const hasDocuments = (documents.data?.length ?? 0) > 0;
+  const [review, setReview] = useState(false);
+  const guard = useWriteGuard();
 
   return (
     <Card
       title="Compile runs"
       actions={
-        <Button onClick={() => start.mutate()} disabled={!hasDocuments || start.isPending}>
-          Compile
-        </Button>
+        <>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+            <input type="checkbox" checked={review} onChange={(e) => setReview(e.target.checked)} />
+            Review extraction before continuing
+          </label>
+          <Button onClick={() => guard(() => start.mutate(), "Sign in to run your own SOPs")} disabled={!hasDocuments || start.isPending}>
+            {start.isPending ? "Starting..." : "Compile"}
+          </Button>
+        </>
       }
     >
       <ErrorNote error={start.error ?? runs.error} />
       {runs.data?.length === 0 ? (
         <Empty>{hasDocuments ? "No runs yet. Press Compile." : "Upload a document to compile."}</Empty>
       ) : (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-left text-sm">
           <thead className="text-xs uppercase text-slate-500">
             <tr>
               <th className="py-2 font-medium">Run</th>
@@ -223,7 +233,7 @@ function Runs({ projectId }: { projectId: string }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </Card>
   );

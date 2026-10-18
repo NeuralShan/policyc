@@ -23,6 +23,7 @@ class FailReason(StrEnum):
     STRUCTURAL_GAP = "structural_gap"    # undetermined / conflict / ambiguous / dead_end / loop
     SLA_BREACH = "sla_breach"
     ACTOR_UNAVAILABLE = "actor_unavailable"   # only for non-fault tests
+    ORDER_VIOLATION = "order_violation"   # a mandatory step was skipped on this path
 
 
 class TestResult(BaseModel):

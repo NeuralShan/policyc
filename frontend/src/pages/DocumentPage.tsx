@@ -43,10 +43,10 @@ export function DocumentPage() {
           document.data && (
             <>
               <a href={api.documentFileUrl(documentId)} target="_blank" rel="noreferrer" className="text-sm text-slate-600 hover:text-slate-900">
-                Original ↗
+                Original Open
               </a>
               <Link to={`/projects/${document.data.project_id}`} className="text-sm text-slate-600 hover:text-slate-900">
-                ← Project
+                 Project
               </Link>
             </>
           )
@@ -62,7 +62,7 @@ export function DocumentPage() {
         <div className="space-y-6">
           <Profile ast={ast.data} />
           <Warnings ast={ast.data} onSelect={setSelectedId} />
-          <div className="grid gap-6 lg:grid-cols-5">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-5">
             <div className="lg:col-span-2">
               <Card title={`Outline · ${ast.data.nodes.length} nodes`}>
                 <Outline ast={ast.data} selectedId={selectedId} onSelect={setSelectedId} />
@@ -122,13 +122,13 @@ function Profile({ ast }: { ast: DocAST }) {
               {value ? (
                 <span title={`Evidence: “${value.quote}”`}>{value.value}</span>
               ) : (
-                <span className="text-slate-400">not stated</span>
+                <span className="text-slate-500">not stated</span>
               )}
             </dd>
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-xs text-slate-400">Hover a value to see its evidence quote · {p.model}</p>
+      <p className="mt-3 text-xs text-slate-500">Hover a value to see its evidence quote · {p.model}</p>
     </Card>
   );
 }
@@ -147,7 +147,7 @@ function Warnings({ ast, onSelect }: { ast: DocAST; onSelect: (id: string) => vo
                 {w.node_id}
               </button>
             )}
-            {w.page && <span className="text-xs text-slate-400">p{w.page}</span>}
+            {w.page && <span className="text-xs text-slate-500">p{w.page}</span>}
           </li>
         ))}
       </ul>
@@ -186,9 +186,9 @@ function Outline({ ast, selectedId, onSelect }: {
             )}
             style={{ paddingLeft: 6 + (depth.get(n.id) ?? 0) * 14 }}
           >
-            <span className="w-9 shrink-0 font-mono text-[10px] text-slate-400">{kindLabel[n.kind]}</span>
+            <span className="w-9 shrink-0 font-mono text-[10px] text-slate-500">{kindLabel[n.kind]}</span>
             <span className={cx("min-w-0 flex-1 truncate", isHeading ? "font-medium text-slate-900" : "text-slate-700")}>
-              {n.text || <span className="text-slate-400">(no caption)</span>}
+              {n.text || <span className="text-slate-500">(no caption)</span>}
             </span>
             {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
           </button>
@@ -238,7 +238,7 @@ function TableGrid({ node }: { node: DocNode }) {
   const table = node.table!;
   const rows = Array.from({ length: table.num_rows }, (_, r) => table.cells.filter((c) => c.row === r));
   return (
-    <table className="w-full border-collapse text-xs">
+    <div className="overflow-x-auto"><table className="w-full border-collapse text-xs">
       <tbody>
         {rows.map((cells, r) => (
           <tr key={r}>
@@ -253,7 +253,7 @@ function TableGrid({ node }: { node: DocNode }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 
@@ -306,7 +306,7 @@ function NodeDetail({ ast, node }: { ast: DocAST; node: DocNode }) {
                 {diagram.nodes.map((d) => (
                   <li key={d.id}>
                     <Mono>{d.id}</Mono> <Badge>{d.kind}</Badge> {d.label}
-                    {d.lane && <span className="text-slate-400"> · {d.lane}</span>}
+                    {d.lane && <span className="text-slate-500"> · {d.lane}</span>}
                   </li>
                 ))}
               </ul>
@@ -316,7 +316,7 @@ function NodeDetail({ ast, node }: { ast: DocAST; node: DocNode }) {
               <ul className="space-y-0.5">
                 {diagram.edges.map((e, i) => (
                   <li key={i}>
-                    <Mono>{e.source} → {e.target}</Mono> {e.label && <span className="text-slate-600">“{e.label}”</span>}
+                    <Mono>{e.source} {e.target}</Mono> {e.label && <span className="text-slate-600">“{e.label}”</span>}
                   </li>
                 ))}
               </ul>

@@ -16,7 +16,7 @@ GOLDEN = Path(__file__).resolve().parents[2] / "golden"
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     # _env_file=None: tests never pick up a developer's backend/.env (and its API key)
-    return Settings(_env_file=None, data_dir=tmp_path / "data", max_upload_mb=1)
+    return Settings(_env_file=None, data_dir=tmp_path / "data", max_upload_mb=1, seed_demo=False)
 
 
 @pytest.fixture

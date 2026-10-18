@@ -35,6 +35,9 @@ def _build_flow_graph(proc: Process) -> nx.DiGraph:
         g.add_edge(t.from_id, t.to_id)
 
     for dec in proc.decisions:
+        # A decision is entered from the step that precedes it (implicit edge in the IR).
+        if dec.preceding_step_id and g.has_node(dec.preceding_step_id):
+            g.add_edge(dec.preceding_step_id, dec.id)
         for branch in dec.branches:
             nxt = branch.next_step_id
             if not g.has_node(nxt):
@@ -45,8 +48,8 @@ def _build_flow_graph(proc: Process) -> nx.DiGraph:
 
 
 def _first_step_id(proc: Process) -> str | None:
-    """Heuristic: first step in declaration order (often also first in flow)."""
-    return proc.steps[0].id if proc.steps else None
+    """The process entry: explicit ``entry_step_id`` or the first declared step."""
+    return proc.entry()
 
 
 @register("ST", "Structural checks")
@@ -90,20 +93,23 @@ def structural_checks(ir: SopIR, _linked: LinkedIR | None) -> list[Diagnostic]:
                 )
             )
 
-        # ST001 — unreachable step: no predecessors AND not the first step
-        step_and_dec_ids = {s.id for s in proc.steps} | {d.id for d in proc.decisions}
-        for node_id in step_and_dec_ids:
-            if g.in_degree(node_id) == 0 and node_id != first_id:
+        # ST001 — unreachable step: not reachable from the entry step
+        step_and_dec_ids = {s.id for s in proc.steps if not s.off_flow} | {
+            d.id for d in proc.decisions
+        }
+        reachable = {first_id} | nx.descendants(g, first_id) if first_id else set()
+        for node_id in sorted(step_and_dec_ids):
+            if node_id not in reachable:
                 data = g.nodes.get(node_id, {})
                 obj = data.get("obj")
                 spans = getattr(obj, "source_spans", []) if obj else []
                 diags.append(
                     Diagnostic(
                         code="ST001",
-                        severity=Severity.WARNING,
+                        severity=Severity.ERROR,
                         message=(
                             f"Step/decision '{node_id}' in process '{proc.name}' "
-                            "is unreachable (no incoming transition)"
+                            "is unreachable: no path from the process entry leads to it"
                         ),
                         process_id=proc.id,
                         step_id=node_id if node_id in {s.id for s in proc.steps} else None,
@@ -117,7 +123,7 @@ def structural_checks(ir: SopIR, _linked: LinkedIR | None) -> list[Diagnostic]:
 
         # ST002 — dead end: node with no outgoing edges and not terminal/END
         terminal_ids = {s.id for s in proc.steps if s.kind == StepKind.TERMINAL} | {"END"}
-        for node_id in step_and_dec_ids:
+        for node_id in sorted(step_and_dec_ids):
             if g.out_degree(node_id) == 0 and node_id not in terminal_ids:
                 data = g.nodes.get(node_id, {})
                 obj = data.get("obj")
@@ -125,7 +131,7 @@ def structural_checks(ir: SopIR, _linked: LinkedIR | None) -> list[Diagnostic]:
                 diags.append(
                     Diagnostic(
                         code="ST002",
-                        severity=Severity.WARNING,
+                        severity=Severity.ERROR,
                         message=(
                             f"Step/decision '{node_id}' in process '{proc.name}' "
                             "is a dead end (no outgoing transition)"

@@ -39,6 +39,11 @@ class EvidenceItem(BaseModel):
     fail_reason: str | None = None  # for test_failure
     case_count: int | None = None   # for rl_finding
     rate: float | None = None       # for rl_finding
+    data: dict[str, Any] = Field(default_factory=dict)  # counterexample / facts / path / rule
+    source_quote: str | None = None
+    document_id: str | None = None
+    char_start: int | None = None
+    char_end: int | None = None
 
 
 class RiskScore(BaseModel):
@@ -71,6 +76,17 @@ class AggregatedFinding(BaseModel):
     evidence: list[EvidenceItem] = Field(default_factory=list)
     risk: RiskScore
     rank: int = 0             # 1 = highest risk, assigned after sorting
+    message: str = ""         # the specific, human-readable statement of the problem
+    witness: dict[str, Any] = Field(default_factory=dict)  # counterexample facts / path / rule
+    clause_ref: str | None = None      # clause number(s) as printed in the document
+    clause_quote: str | None = None    # verbatim source text
+    document_id: str | None = None
+    char_start: int | None = None
+    char_end: int | None = None
+    involved_node_ids: list[str] = Field(default_factory=list)  # steps/decisions to highlight
+    suggested_fix: str | None = None
+    fingerprint: str = ""     # stable identity across runs (used for the fixed/new/remaining diff)
+    reproduced_by_tests: int = 0  # number of failing test scenarios that prove it
 
 
 class FindingsReport(BaseModel):

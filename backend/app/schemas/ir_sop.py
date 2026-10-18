@@ -221,6 +221,8 @@ class Step(BaseModel):
     source_spans: list[SourceSpan] = Field(default_factory=list)
     extraction_confidence: float = 1.0  # 0–1; below 0.7 the step is flagged for review
     note: str | None = None  # extractor's explanatory note for low-confidence items
+    inferred: bool = False  # True when the flow normaliser added this step (not stated in text)
+    off_flow: bool = False  # standing rule / principle (e.g. "no one may approve their own claim")
 
 
 class DecisionBranch(BaseModel):
@@ -237,10 +239,11 @@ class Decision(BaseModel):
 
     id: str  # "d01"
     question: str  # e.g. "Is the complaint upheld?"
-    preceding_step_id: str  # which step leads here
+    preceding_step_id: str | None = None  # which step leads here (None: entered from a decision)
     branches: list[DecisionBranch]
     source_spans: list[SourceSpan] = Field(default_factory=list)
     extraction_confidence: float = 1.0
+    inferred: bool = False  # True when the flow normaliser derived this decision from sibling clauses
 
 
 class Transition(BaseModel):
@@ -250,6 +253,36 @@ class Transition(BaseModel):
     to_id: str  # step id or "END"
     condition: ConditionExpr = Field(default_factory=AlwaysCondition)
     label: str | None = None
+    source_spans: list[SourceSpan] = Field(default_factory=list)
+    inferred: bool = False  # True when added by the flow normaliser (document order assumption)
+
+
+class Deadline(BaseModel):
+    """An end-to-end time limit, e.g. "reimbursed within 7 calendar days of submission"."""
+
+    id: str
+    description: str
+    max_duration: float
+    unit: TimeUnit
+    from_step_id: str | None = None  # None = process start
+    to_step_id: str | None = None  # None = process end
+    source_spans: list[SourceSpan] = Field(default_factory=list)
+
+
+class ConstraintKind(StrEnum):
+    MUST_PRECEDE = "must_precede"  # `before_step_id` must always happen before `target_step_id`
+    NO_SELF_ACTION = "no_self_action"  # the requester may not perform steps of `role_id` on itself
+
+
+class Constraint(BaseModel):
+    """A rule that must hold on every path (safety invariant, segregation of duties)."""
+
+    id: str
+    kind: ConstraintKind
+    description: str
+    before_step_id: str | None = None
+    target_step_id: str | None = None
+    role_id: str | None = None
     source_spans: list[SourceSpan] = Field(default_factory=list)
 
 
@@ -285,10 +318,20 @@ class Process(BaseModel):
     document_id: str
     trigger: Trigger | None = None
     overall_sla: SLA | None = None
+    entry_step_id: str | None = None  # explicit start node; falls back to the first step
     steps: list[Step] = Field(default_factory=list)
     decisions: list[Decision] = Field(default_factory=list)
     transitions: list[Transition] = Field(default_factory=list)
     references: list[ExternalReference] = Field(default_factory=list)
+    deadlines: list[Deadline] = Field(default_factory=list)
+    constraints: list[Constraint] = Field(default_factory=list)
+    non_operational_numbers: list[str] = Field(default_factory=list)  # purpose/scope clauses
+    section_numbers: list[str] = Field(default_factory=list)  # top-level section numbers present
+
+    def entry(self) -> str | None:
+        if self.entry_step_id and (self.step(self.entry_step_id) or self.decision(self.entry_step_id)):
+            return self.entry_step_id
+        return self.steps[0].id if self.steps else None
 
     def step(self, step_id: str) -> Step | None:
         return next((s for s in self.steps if s.id == step_id), None)
@@ -326,3 +369,7 @@ class SopIR(BaseModel):
         description="Keyed by step/decision id; human edits applied before link stage",
     )
     extraction_stats: dict[str, int] = Field(default_factory=dict)
+    # Raw model replies kept so a revision can recompile incrementally: only sections whose text
+    # changed go back to the model; the rest (and the flow pass) are replayed.
+    raw_sections: dict[str, dict[str, Any]] = Field(default_factory=dict)  # doc key -> section -> reply
+    flow_replies: dict[str, Any] = Field(default_factory=dict)  # doc key -> flow-pass reply

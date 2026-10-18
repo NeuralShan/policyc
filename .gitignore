@@ -21,3 +21,7 @@ frontend/dist/
 
 # Confidential golden-set material (real SOPs, real case history) goes here, never in git
 golden/private/
+
+# Local logs
+*.log
+*.err

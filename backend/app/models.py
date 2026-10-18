@@ -40,6 +40,8 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # Firebase uid of the owner; NULL = public (bundled demo/sample project)
+    owner_uid: Mapped[str | None] = mapped_column(String(128), index=True, default=None)
 
     documents: Mapped[list["Document"]] = relationship(
         back_populates="project", cascade="all, delete-orphan", order_by="Document.uploaded_at"
@@ -114,6 +116,9 @@ class CompileRun(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     started_at: Mapped[datetime | None]
     finished_at: Mapped[datetime | None]
+    auto_approve: Mapped[bool] = mapped_column(default=False, server_default="0")
+    base_run_id: Mapped[str | None] = mapped_column(String(32))  # revision this run derives from
+    note: Mapped[str | None] = mapped_column(Text)
 
     project: Mapped[Project] = relationship(back_populates="runs")
     events: Mapped[list["RunEvent"]] = relationship(

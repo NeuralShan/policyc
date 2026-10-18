@@ -1,0 +1,11 @@
+{
+ "id": "purchase",
+ "title": "Purchase Requisition and Purchase Order Approval Procedure",
+ "doc_code": "PRC-006",
+ "industry": "Manufacturing procurement (Japan)",
+ "language": "en",
+ "description": "Approval bands overlap and leave gaps after a limit was lowered without changing the next band.",
+ "planted_bugs": 4,
+ "file": "PRC-006_Purchase_Requisition_and_PO_Approval_Procedure_v3.0.pdf",
+ "text_file": "sop.md"
+}

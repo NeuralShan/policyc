@@ -1,0 +1,56 @@
+{
+  "id": "incident",
+  "docNo": "INC-007",
+  "title": "Workplace Incident Reporting and Investigation Procedure",
+  "language": "en",
+  "domain": "Manufacturing health, safety & environment",
+  "organisation": "Hoshino Precision Manufacturing Co., Ltd.",
+  "specSection": null,
+  "files": {
+    "text": "sop.md",
+    "pdf": "INC-007_Workplace_Incident_Reporting_and_Investigation_v1.2.pdf",
+    "docx": "INC-007_Workplace_Incident_Reporting_and_Investigation_v1.2.docx"
+  },
+  "totals": {
+    "errors": 2,
+    "warnings": 2,
+    "info": 0
+  },
+  "planted": [
+    {
+      "code": "E102",
+      "clauses": [
+        "C3.2",
+        "C4.1",
+        "C4.2"
+      ],
+      "bug": "Major incidents are classified but nobody is assigned to investigate them",
+      "witness": "severity=major"
+    },
+    {
+      "code": "E104",
+      "clauses": [
+        "C4.2",
+        "C6.1"
+      ],
+      "bug": "A serious incident reported by the Site HSE Manager can't be investigated: one HSE Manager, and reporters may not investigate",
+      "witness": "severity=serious, reporter_role=hse_manager"
+    },
+    {
+      "code": "W204",
+      "clauses": [
+        "C4.4",
+        "C5.1",
+        "C5.3"
+      ],
+      "bug": "5 + 10 working days (360h) > 10 working days (240h)"
+    },
+    {
+      "code": "W201",
+      "clauses": [
+        "C3.1"
+      ],
+      "bug": "'as soon as practicable'"
+    }
+  ]
+}

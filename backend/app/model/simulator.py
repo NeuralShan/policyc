@@ -14,14 +14,19 @@ from __future__ import annotations
 
 import logging
 
+from app.logic import norm_text, same_outcome
 from app.model.evaluator import eval_condition
 from app.schemas.ir_sop import (
     AlwaysCondition,
+    CompareCondition,
+    ConstraintKind,
+    Decision,
     Process,
     SopIR,
     Step,
     StepKind,
     TimeUnit,
+    ValueType,
 )
 from app.schemas.trace import (
     DecisionOutcome,
@@ -65,6 +70,29 @@ def _build_transition_map(proc: Process) -> dict[str, list[str]]:
     return m
 
 
+def _rework(dec: Decision, facts: dict) -> bool:
+    """Model the requester fixing the problem: flip a yes/no fact so another branch applies."""
+    for branch in dec.branches:
+        c = branch.condition
+        if (
+            isinstance(c, CompareCondition)
+            and c.right.value_type == ValueType.BOOL
+            and c.right.bool_value is not None
+            and facts.get(c.left) is not None
+            and bool(facts[c.left]) != c.right.bool_value
+        ):
+            facts[c.left] = c.right.bool_value
+            return True
+    return False
+
+
+def _requester_value(facts: dict) -> str | None:
+    for key, value in facts.items():
+        if "requester" in key.lower() or "submitter" in key.lower():
+            return norm_text(value)
+    return None
+
+
 def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
     """Run the simulator and return a complete ExecutionTrace."""
     # Select process
@@ -82,11 +110,12 @@ def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
             outcome=TraceOutcome.DEAD_END,
         )
 
-    transition_map = _build_transition_map(proc)
     decision_map = {d.id: d for d in proc.decisions}
     step_map = {s.id: s for s in proc.steps}
 
-    facts = scenario.facts
+    facts = dict(scenario.facts)  # the simulator may model rework by correcting a yes/no fact
+    no_self_action = any(c.kind == ConstraintKind.NO_SELF_ACTION for c in proc.constraints)
+    reworks = 0
     trace_steps: list[TraceStep] = []
     visited: set[str] = set()
     elapsed_s: float = 0.0
@@ -95,7 +124,7 @@ def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
     system_down_count = 0
 
     # Start node = first step in declaration order
-    current_id: str = proc.steps[0].id if proc.steps else ""
+    current_id: str = proc.entry() or ""
     if not current_id:
         return ExecutionTrace(
             run_id=ir.run_id,
@@ -109,10 +138,21 @@ def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
     seq = 0
 
     while seq < scenario.max_steps:
-        # Loop detection
-        if current_id in visited:
-            outcome = TraceOutcome.LOOP_DETECTED
+        if current_id == "END":
+            outcome = TraceOutcome.COMPLETED
             break
+        # Loop detection (a rework loop is allowed to run again once the requester has fixed it)
+        if current_id in visited:
+            last_dec = next(
+                (decision_map[t.node_id] for t in reversed(trace_steps) if t.node_id in decision_map),
+                None,
+            )
+            if last_dec is not None and reworks < 3 and _rework(last_dec, facts):
+                reworks += 1
+                visited = set()
+            else:
+                outcome = TraceOutcome.LOOP_DETECTED
+                break
         visited.add(current_id)
 
         # ── Decision node ──────────────────────────────────────────────────
@@ -122,12 +162,19 @@ def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
             non_false_branches = []
 
             for branch in dec.branches:
+                if isinstance(branch.condition, AlwaysCondition):
+                    continue  # an "otherwise" branch only applies when no explicit branch does
                 result = eval_condition(branch.condition, facts)
                 if result == "true":
                     true_branches.append(branch)
                 if result in ("true", "vague", "unknown"):
                     non_false_branches.append(branch)
 
+            if len(true_branches) > 1 and all(
+                same_outcome(proc, true_branches[0].next_step_id, b.next_step_id)
+                for b in true_branches[1:]
+            ):
+                true_branches = true_branches[:1]  # redundant rules agreeing on the outcome
             if len(true_branches) > 1:
                 dec_outcome = DecisionOutcome.CONFLICT
                 trace_outcome = TraceOutcome.CONFLICT
@@ -199,6 +246,20 @@ def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
                 role_ref = ir.symbols.role(role_id)
                 actor = role_ref.name if role_ref else role_id
 
+        # Segregation of duties: nobody may approve their own request
+        requester = _requester_value(facts)
+        if (
+            no_self_action
+            and requester
+            and role_id
+            and step_status == StepStatus.OK
+            and (step.kind in (StepKind.APPROVAL, StepKind.VERIFICATION) or "approv" in step.action.lower())
+            and requester in {norm_text(role_id), norm_text(actor or "")}
+        ):
+            step_status = StepStatus.ACTOR_UNAVAILABLE
+            actor_unavailable_count += 1
+            note = f"no eligible approver: the {actor or role_id} may not approve their own request"
+
         # Check systems
         if step_status == StepStatus.OK:
             for sys_id in step.systems:
@@ -242,9 +303,12 @@ def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
             break
 
         # Find next node from transitions first, then decision map
-        nexts = transition_map.get(current_id, [])
-        if nexts:
-            current_id = nexts[0]
+        outs = [t for t in proc.transitions if t.from_id == current_id]
+        chosen_t = next((t for t in outs if eval_condition(t.condition, facts) == "true"), None)
+        if chosen_t is None and outs:
+            chosen_t = outs[0]
+        if chosen_t is not None:
+            current_id = chosen_t.to_id
         else:
             # Check if the step leads to a decision
             dec_next = next(
@@ -259,12 +323,25 @@ def simulate(ir: SopIR, scenario: Scenario) -> ExecutionTrace:
     else:
         outcome = TraceOutcome.MAX_STEPS
 
+    violations: list[str] = []
+    order = [t.node_id for t in trace_steps]
+    for c in proc.constraints:
+        if c.kind != ConstraintKind.MUST_PRECEDE or not (c.before_step_id and c.target_step_id):
+            continue
+        if c.target_step_id in order:
+            first_target = order.index(c.target_step_id)
+            from app.extract.shortcuts import equivalent_steps
+
+            if not (equivalent_steps(proc, c.before_step_id) & set(order[:first_target])):
+                violations.append(f"{c.target_step_id} reached without {c.before_step_id}")
+
     return ExecutionTrace(
         run_id=ir.run_id,
         process_id=proc.id,
         scenario_id=scenario.id,
         scenario=scenario,
         steps=trace_steps,
+        violations=violations,
         outcome=outcome,
         elapsed_s=elapsed_s,
         sla_breaches=sla_breaches,

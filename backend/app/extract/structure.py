@@ -7,11 +7,15 @@ small enough for the lite/flash quota and makes repairs targeted.
 Validation errors are fed back in a repair loop (up to MAX_REPAIRS attempts).
 """
 
+import hashlib
 import json
+import re
 
 from pydantic import BaseModel, Field
 
 from app.core.llm.gateway import CallContext, LLMGateway, LLMOutputError, LLMUnavailable
+from app.extract.textrules import is_non_operational_heading, top_number
+from app.logic import normalize_op
 from app.schemas.docast import DocAST, DocNode, NodeKind
 from app.schemas.ir_sop import (
     SLA,
@@ -150,10 +154,13 @@ def _parse_condition(data: dict) -> ConditionExpr:
             currency=right_data.get("currency"),
             duration_unit=right_data.get("duration_unit"),
         )
+        op = normalize_op(data.get("op", "eq"))
+        if op is None:
+            return UnknownCondition(kind=ConditionKind.UNKNOWN, raw_text=str(data))
         return CompareCondition(
             kind=ConditionKind.COMPARE,
             left=data.get("left", ""),
-            op=data.get("op", "eq"),
+            op=op,
             right=right,
         )
     if kind == ConditionKind.LOGICAL:
@@ -318,6 +325,25 @@ def _section_text(ast: DocAST, heading_node: DocNode) -> str:
     return "\n".join(parts)[:MAX_SECTION_CHARS]
 
 
+def section_headings(ast: DocAST) -> dict[str, str]:
+    """{top-level section number: heading text without its number}."""
+    out: dict[str, str] = {}
+    for n in _top_level_sections(ast):
+        top = top_number(n.number) or top_number(n.text)
+        if top:
+            out[top] = re.sub(r"^\s*\d+[.)]?\s*", "", n.text).strip()
+    return out
+
+
+def clause_texts(ast: DocAST) -> dict[str, str]:
+    """{clause number as printed: full clause text} (the IR keeps only a short quote per step)."""
+    out: dict[str, str] = {}
+    for n in ast.nodes:
+        if n.number and n.kind != NodeKind.HEADING and n.number not in out:
+            out[n.number] = n.text
+    return out
+
+
 def _top_level_sections(ast: DocAST) -> list[DocNode]:
     """Return level-1 heading nodes (the main sections of the SOP)."""
     return [n for n in ast.nodes if n.kind == NodeKind.HEADING and n.level == 1]
@@ -436,16 +462,25 @@ def extract_structure(
     symbols: SymbolTable,
     llm: LLMGateway,
     context: CallContext,
+    reuse: dict | None = None,
+    record: dict | None = None,
 ) -> tuple[Process, list[ExtractionWarning]]:
     """Run the structure pass over all sections.  Returns (Process, warnings)."""
     sections = _top_level_sections(ast)
+    headings: dict[str, str] = {}
+    for n in sections:
+        top = top_number(n.number) or top_number(n.text)
+        if top:
+            headings[top] = re.sub(r"^\s*\d+[.)]?\s*", "", n.text).strip()
     if not sections:
         # Flat document with no headings – treat whole text as one section.
         sections_data = [("(whole document)", ast.text[:MAX_SECTION_CHARS])]
     else:
+        # Purpose / scope / definitions describe the document, not a procedure: skip the LLM call.
         sections_data = [
             (f"Section {n.number or n.text[:40]}", _section_text(ast, n))
             for n in sections
+            if not is_non_operational_heading(re.sub(r"^\s*\d+[.)]?\s*", "", n.text))
         ]
 
     all_steps: list[Step] = []
@@ -457,15 +492,25 @@ def extract_structure(
     # IDs used so far across sections (to detect duplicates from the LLM)
     prior_step_ids: list[str] = []
     used_step_ids: set[str] = set()
+    prior_order: list[str] = []  # insertion order: a set here made prompts differ per process
     used_decision_ids: set[str] = set()
 
     for section_label, section_text in sections_data:
         if not section_text.strip():
             continue
 
-        reply, errs = _extract_section(
-            ast, section_label, section_text, symbols, prior_step_ids, llm, context
-        )
+        section_hash = hashlib.sha1(section_text.encode("utf-8")).hexdigest()
+        previous = (reuse or {}).get(section_label)
+        reused = bool(previous and previous.get("hash") == section_hash)
+        if reused:
+            # unchanged since the base revision: replay its extraction instead of asking again
+            reply, errs = StructureReply.model_validate(previous["reply"]), []
+        else:
+            reply, errs = _extract_section(
+                ast, section_label, section_text, symbols, prior_step_ids, llm, context
+            )
+        if reply is not None and record is not None:
+            record[section_label] = {"hash": section_hash, "reply": reply.model_dump(mode="json")}
         if reply is None:
             all_warnings.append(
                 ExtractionWarning(
@@ -503,6 +548,8 @@ def extract_structure(
             if new_id != d.id:
                 d = d.model_copy(update={"id": new_id})
             used_step_ids.add(d.id)
+            if d.id not in prior_order:
+                prior_order.append(d.id)
             step, errs = _parse_step(d, ast, symbols)
             section_steps.append(step)
             validation_errors.extend(errs)
@@ -537,15 +584,16 @@ def extract_structure(
         for err in validation_errors:
             all_warnings.append(ExtractionWarning(code="validation_error", message=err))
 
-        # --- Round-trip check (only if flash quota available) ---
-        rt_warnings = _run_roundtrip(
-            ast, section_label, section_text, section_steps, section_decisions, llm, context
-        )
-        all_warnings.extend(rt_warnings)
+        # --- Round-trip check (skipped for replayed sections) ---
+        if not reused:
+            rt_warnings = _run_roundtrip(
+                ast, section_label, section_text, section_steps, section_decisions, llm, context
+            )
+            all_warnings.extend(rt_warnings)
 
         all_steps.extend(section_steps)
         all_decisions.extend(section_decisions)
-        prior_step_ids = list(used_step_ids)
+        prior_step_ids = list(prior_order)
 
     # Try to detect a trigger from the title / first heading
     trigger: Trigger | None = None

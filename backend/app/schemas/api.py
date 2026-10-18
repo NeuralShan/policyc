@@ -59,6 +59,14 @@ class RunCreate(BaseModel):
     document_ids: list[str] | None = Field(
         default=None, description="Documents to compile; all project documents if omitted"
     )
+    base_run_id: str | None = Field(
+        default=None,
+        description="Recompile incrementally from an earlier run: unchanged sections are replayed",
+    )
+    auto_approve: bool = Field(
+        default=False,
+        description="Skip the human review pause after extraction (the review page stays available)",
+    )
 
 
 class RunEventOut(_ORM):
@@ -78,6 +86,9 @@ class RunOut(_ORM):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+    auto_approve: bool = False
+    base_run_id: str | None = None
+    note: str | None = None
 
 
 class RunDetail(RunOut):
