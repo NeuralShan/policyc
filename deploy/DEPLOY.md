@@ -22,9 +22,9 @@ PolicyC has two halves. Think of a restaurant:
 | **Engine** (reads documents, finds bugs) | the kitchen | **Render** | Render "Free" web service |
 | **Brain** (Gemini AI) | the head chef | Google | your **API key** |
 | **Login** ("Sign in with Google") | the doorman | **Firebase Authentication** | free |
-| **Code storage** | the recipe book | **GitHub** | free |
+| **Code storage** | the recipe book | **GitHub** (`NeuralShan/policyc`, branch `feature_updates_01`) | free |
 
-Render builds the engine from your code on GitHub. Firebase serves the website. They are told each
+Render builds the engine from the team's code on GitHub. Firebase serves the website. They are told each
 other's addresses.
 
 ### What the free engine can and cannot do
@@ -66,8 +66,7 @@ FIREBASE apiKey:              ______________________________
 FIREBASE authDomain:          ______________________________
 FIREBASE appId:               ______________________________
 FIREBASE messagingSenderId:   ______________________________
-GITHUB USERNAME:              ______________________________
-GITHUB REPO URL:              https://github.com/__________/policyc
+GITHUB REPO:                  https://github.com/NeuralShan/policyc  (branch feature_updates_01)
 ENGINE ADDRESS (Render):      https://______________.onrender.com
 WEBSITE ADDRESS:              https://__________.web.app
 ```
@@ -164,76 +163,48 @@ Left menu → **Build** → **Hosting** → **Get started** → click **Next / N
 
 ---
 
-## Part 3: Put the code on GitHub (15 minutes)
+## Part 3: The code is already on GitHub (nothing to create)
 
-Render reads your code from GitHub, so it must live there. It must be in **your own** GitHub account.
+Your team's repository is **`NeuralShan/policyc`** and the finished work is on its branch
+**`feature_updates_01`**. This was already uploaded for you. Render will build the engine from exactly
+that branch. (`main` is not used.)
 
-### Step 3.1: Make a GitHub account (skip if you have one)
+### Step 3.1: Check that the code is there
 
-Go to <https://github.com/signup>. Write your username in Notepad.
+1. Open <https://github.com/NeuralShan/policyc/tree/feature_updates_01> in your browser.
+2. ✅ You see the folders `backend`, `frontend`, `deploy`, `docs` and the files `Dockerfile`,
+   `render.yaml`, `LICENSE`. The newest commit says "Mark binary/seed files so Git never rewrites them…".
 
-### Step 3.2: Create an empty repository
+### Step 3.2: Decide how Render will read the repository
 
-1. Open <https://github.com/new>.
-2. **Repository name:** `policyc`. Choose **Public** (the hackathon needs it public anyway).
-3. **Do not** tick "Add a README", ".gitignore" or "license" (leave everything empty).
-4. Click **Create repository**.
-5. ✅ A page with a web address like `https://github.com/YOURNAME/policyc` appears. Write it in Notepad.
+Render needs permission to read the repo. There are two ways. Try **A** first.
 
-### Step 3.3: Save a snapshot of all the work (commit)
+* **A. The repo is Public** (open the link above while logged out / in Incognito: if you can see the
+  code, it is public). Then in Part 4 you choose **Public Git Repository** and paste
+  `https://github.com/NeuralShan/policyc`. **No GitHub login is needed.** (Render will not rebuild
+  automatically on later pushes; use **Manual Deploy** in Part 10.)
+* **B. The repo is Private.** In Part 4 you choose **Build and deploy from a Git repository**, click
+  **Connect GitHub**, and sign in to GitHub **as the account that owns or can open this repository**
+  (`NeuralShan`). If your own GitHub account is different, ask the owner to add you under the
+  repo's **Settings → Collaborators → Add people**, accept the email invitation, and connect with
+  your own GitHub.
 
-In PowerShell (project folder):
-
-```powershell
-git add -A
-git status --short | Measure-Object | Select-Object -ExpandProperty Count
-```
-✅ A number appears (the files being saved; about 190 to 200).
-
-Before continuing, check that no secret file is included:
-
-```powershell
-git status --short | Select-String -Pattern "\.env$|\.env\.|\.pem|\.key"
-```
-✅ Nothing is printed, or only lines mentioning `.env.example`. ❌ If you see `backend/.env`, stop:
-that file holds your key. Run `git rm --cached backend/.env` and repeat.
-
-Now save:
-
-```powershell
-git commit -m "PolicyC: workspace, engine checks, demo seed, Render deploy"
-```
-✅ It prints a summary like `NNN files changed`.
-
-### Step 3.4: Upload to GitHub (push)
-
-Replace `YOURNAME` with your GitHub username:
-
-```powershell
-git remote add deploy https://github.com/YOURNAME/policyc.git
-git push deploy feature_updates_01:main
-```
-
-A browser window or login box appears: sign in to GitHub and click **Authorize**.
-✅ The terminal ends with something like `feature_updates_01 -> main`.
-
-Open your repository page and refresh. ✅ You see the folders `backend`, `frontend`, `deploy`, `docs`
-and the files `Dockerfile`, `render.yaml`.
-
-> If `remote add` says "remote deploy already exists", run `git remote set-url deploy https://github.com/YOURNAME/policyc.git` and push again.
+> The hackathon needs the repository to be **Public** by submission time. To change it: repo
+> **Settings** → scroll to **Danger Zone** → **Change visibility** → **Make public**.
+> (Only the owner can do this.)
 
 ---
 
 ## Part 4: Create the engine on Render (25 minutes, mostly waiting)
 
-### Step 4.1: Connect Render to GitHub
+### Step 4.1: Start a new Web Service
 
 1. Open <https://dashboard.render.com> (you are already signed in).
 2. Click **New +** (top right) → **Web Service**.
-3. Choose **Build and deploy from a Git repository** → **Next**.
-4. Click **Connect GitHub** (or **Configure account**), sign in, and allow access.
-   Choose **Only select repositories** → pick `policyc` → **Install**.
-5. ✅ Your `policyc` repository appears in the list. Click **Connect** next to it.
+3. Pick the tab that matches Step 3.2:
+   * **A (public):** **Public Git Repository** → paste `https://github.com/NeuralShan/policyc` → **Continue**.
+   * **B (private):** **Git Provider** → **Connect GitHub**, sign in and allow access to the
+     `policyc` repository → click **Connect** next to it.
 
 ### Step 4.2: Fill in the settings (one page, go slowly)
 
@@ -241,13 +212,13 @@ and the files `Dockerfile`, `render.yaml`.
 |---|---|
 | **Name** | `policyc-api` |
 | **Region** | `Singapore (Southeast Asia)` |
-| **Branch** | `main` |
+| **Branch** | **`feature_updates_01`** (type it exactly; do **not** leave `main`) |
 | **Root Directory** | leave empty |
-| **Runtime / Language** | **Docker** (Render usually detects it; if you must choose, pick Docker) |
+| **Runtime / Language** | **Docker** (Render usually detects it) |
 | **Dockerfile Path** | leave the default `./Dockerfile` |
 | **Instance Type** | **Free** ($0 / month, 512 MB) |
 
-Scroll down: click **Advanced** (if collapsed) and set **Health Check Path** to `/api/health`.
+Scroll down, click **Advanced** (if collapsed) and set **Health Check Path** to `/api/health`.
 
 ### Step 4.3: Add the settings (environment variables)
 
@@ -413,7 +384,7 @@ confirmed**. Send this (email, WhatsApp group, or the support link on the Hack2s
 ### Step 8.3: Things to hand in
 
 * Website address: `https://YOURPROJECTID.web.app`
-* GitHub repository link (it is already public)
+* GitHub repository link (it must be **Public**; see Step 3.2)
 * Video and deck: see `docs/SUBMISSION_CHECKLIST.md` and `docs/DEMO_SCRIPT.md`
 
 ---
@@ -421,12 +392,12 @@ confirmed**. Send this (email, WhatsApp group, or the support link on the Hack2s
 ## Part 9: When something goes wrong
 
 After changing a **Render setting**, it redeploys by itself (a few minutes). After changing a **website
-file**, repeat Steps 6.3 and 6.4. After changing **code**, repeat Steps 3.3 and 3.4 (Render rebuilds by itself).
+file**, repeat Steps 6.3 and 6.4. After changing **code**, commit and push to GitHub (Part 10), then Render rebuilds (automatically for a connected repo, or press **Manual Deploy** for a public-URL service).
 
 | What you see | Probable cause | Fix |
 |---|---|---|
 | Render asks for a **credit card** at some step | You picked a paid instance type | Choose **Free**. If there is no free option, stop and ask for help |
-| Render build fails with `no such file ... requirements-lite.txt` | The file did not reach GitHub | Run `git add -A`, `git commit -m "add file"`, `git push deploy feature_updates_01:main`. Check the file is visible on GitHub under `backend/` |
+| Render build fails with `no such file ... requirements-lite.txt`, or cannot find `Dockerfile` | Wrong branch selected | Render → service → **Settings** → **Branch** must be `feature_updates_01`; then **Manual Deploy** → **Deploy latest commit** |
 | Render says **Out of memory** / the service restarts | Too much at once | Open Render → your service → **Logs**. This should not happen in lightweight mode; send the last 30 lines for help |
 | Render says **Deploy failed** / **Exited with status 1** | A setting is missing or misspelt | Check Step 4.3 spelling; open **Logs** and look at the last red lines |
 | `/api/health` loads forever | The free engine is waking up | Wait up to 90 seconds and refresh |
@@ -438,7 +409,8 @@ file**, repeat Steps 6.3 and 6.4. After changing **code**, repeat Steps 3.3 and 
 | Upload says "no PDF/Word/HTML reader (lightweight mode)" | Expected on the free engine | Upload a `.txt` or `.md`, or use the sample procedures |
 | "Extraction failed ... daily quota exhausted" | Gemini's free daily allowance is used up | Wait until tomorrow, or make another key (Part 1) and replace `PC_GEMINI_API_KEY` in Render → Environment. Sample fixes still work from saved results |
 | `/api/samples` is empty | Demo data not loaded | Render → service → **Manual Deploy** → **Clear build cache & deploy**; check Logs for `seed: loaded 9 demo project(s)` |
-| `git push` says "Authentication failed" / "Repository not found" | Wrong login or wrong address | Check the repository address; run `git remote -v`; sign in to GitHub in the popup with the account that owns the repo |
+| Render says it cannot access the repository | Private repo, wrong GitHub account | Follow option **B** of Step 3.2, or ask the owner to make the repo public |
+| `git push` says "Authentication failed" / "Permission denied" | The GitHub account you signed in with cannot write to `NeuralShan/policyc` | Ask the owner to add you under **Settings → Collaborators**, then sign in with that account |
 | `firebase deploy` says "not logged in" | Login expired | Run `firebase login` again |
 | `firebase deploy` says "Hosting site not found" | Hosting not started | Redo Step 2.4 |
 | `npm ci` shows red `ERR!` | Wrong folder or no internet | The prompt must end with `...\policyc\frontend>`; check internet; retry |
@@ -448,7 +420,7 @@ file**, repeat Steps 6.3 and 6.4. After changing **code**, repeat Steps 3.3 and 
 
 ## Part 10: Updating later
 
-* **Engine or code changed:** `git add -A`, `git commit -m "update"`, `git push deploy feature_updates_01:main`. Render rebuilds by itself.
+* **Engine or code changed:** in PowerShell (project folder) run `git add -A`, then `git commit -m "update"`, then `git push origin feature_updates_01`. A connected repo rebuilds by itself; for the public-URL option open Render → your service → **Manual Deploy** → **Deploy latest commit**.
 * **Website changed:** repeat **Steps 6.3 and 6.4**.
 * **Settings changed on Render:** edit them under **Environment**; it redeploys by itself.
 
