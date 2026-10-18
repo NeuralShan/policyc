@@ -73,7 +73,9 @@ function useStored(key: string, initial: number) {
     const s = Number(localStorage.getItem(key));
     return Number.isFinite(s) && s > 0 ? s : initial;
   });
-  useEffect(() => localStorage.setItem(key, String(Math.round(v))), [key, v]);
+  useEffect(() => {
+    localStorage.setItem(key, String(Math.round(v)));
+  }, [key, v]);
   return [v, setV] as const;
 }
 

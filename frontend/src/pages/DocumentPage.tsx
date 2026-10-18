@@ -168,7 +168,10 @@ function Outline({ ast, selectedId, onSelect }: {
 }) {
   const depth = depths(ast);
   const selectedRow = useRef<HTMLButtonElement>(null);
-  useEffect(() => selectedRow.current?.scrollIntoView({ block: "nearest" }), [selectedId]);
+  useEffect(() => {
+    // braces on purpose: an effect must not return scrollIntoView's value (React would call it as cleanup)
+    selectedRow.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedId]);
   return (
     <div className="max-h-[75vh] overflow-y-auto pr-1">
       {ast.nodes.map((n) => {
@@ -204,7 +207,9 @@ function TextView({ ast, selectedId, onSelect }: {
   onSelect: (id: string) => void;
 }) {
   const selectedBlock = useRef<HTMLDivElement>(null);
-  useEffect(() => selectedBlock.current?.scrollIntoView({ block: "center", behavior: "smooth" }), [selectedId]);
+  useEffect(() => {
+    selectedBlock.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [selectedId]);
   return (
     <div className="max-h-[75vh] space-y-2 overflow-y-auto">
       {ast.nodes.map((n) => (

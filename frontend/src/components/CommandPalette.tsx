@@ -78,7 +78,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (!open && d.open) d.close();
   }, [open]);
 
-  useEffect(() => setActive(0), [q]);
+  useEffect(() => {
+    setActive(0);
+  }, [q]);
 
   const exec = (c?: Cmd) => {
     if (!c) return;
