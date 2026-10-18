@@ -114,3 +114,18 @@ def test_run_options_are_recorded(client):
     project = client.post("/api/projects", json={"name": "x", "description": ""}).json()["id"]
     assert client.post(f"/api/projects/{project}/runs", json={"auto_approve": True}).status_code == 422  # no docs
     assert json.loads(json.dumps(client.get("/api/me").json()))["auth_enabled"] is False
+
+
+def test_case_history_upload_and_reality_check(seeded, client):
+    csv = (
+        "case_id,activity,timestamp\n"
+        "C1,Submit expense claim with receipts through expense portal,2026-09-01T09:00:00\n"
+        "C1,Check every claim for receipts,2026-09-01T10:00:00\n"
+        "C1,Pay approved claims,2026-09-02T10:00:00\n"
+    )
+    up = client.post("/api/runs/run_aaaa/case-history", files={"file": ("cases.csv", csv, "text/csv")})
+    assert up.status_code == 201, up.text
+    assert up.json()["source_filename"] == "cases.csv"
+    rep = client.post("/api/runs/run_aaaa/reality")
+    assert rep.status_code == 201, rep.text
+    assert rep.json()["total_cases"] == 1

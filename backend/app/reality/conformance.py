@@ -37,10 +37,11 @@ def _sla_to_seconds(sla: SLA) -> float | None:
     if sla.vague or sla.max_duration is None:
         return None
     multipliers = {
-        TimeUnit.SECONDS: 1,
-        TimeUnit.MINUTES: 60,
         TimeUnit.HOURS: 3600,
         TimeUnit.DAYS: 86400,
+        TimeUnit.CALENDAR_DAYS: 86400,
+        # Elapsed wall-clock time: five business days span about a calendar week.
+        TimeUnit.BUSINESS_DAYS: 86400 * 7 / 5,
         TimeUnit.WEEKS: 604800,
     }
     return sla.max_duration * multipliers.get(sla.unit, 1)

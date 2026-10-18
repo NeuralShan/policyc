@@ -2,7 +2,7 @@ import asyncio
 from collections.abc import AsyncIterable
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, File, Header, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel
@@ -272,7 +272,7 @@ def get_run_testrun(run: RunDep, services: ServicesDep) -> dict[str, Any]:
 async def upload_case_history(
     run: RunDep,
     services: ServicesDep,
-    file: Annotated[Any, "UploadFile"],
+    file: Annotated[UploadFile, File()],
     case_id_col: str = "case_id",
     activity_col: str = "activity",
     timestamp_col: str = "timestamp",
@@ -285,13 +285,8 @@ async def upload_case_history(
     """
     from pathlib import PurePath
 
-    from fastapi import UploadFile
-
     from app.reality.adapter import parse_csv
     from app.schemas.case_history import ColumnMap
-
-    if not isinstance(file, UploadFile):
-        raise HTTPException(422, "Provide a CSV file as multipart/form-data 'file' field")
 
     filename = PurePath((file.filename or "cases.csv").replace("\\", "/")).name
     content = await file.read()
