@@ -1,0 +1,12 @@
+# Never rewrite line endings inside binary or exact-content files (a changed byte breaks a PDF)
+*.pdf binary
+*.docx binary
+*.png binary
+*.ico binary
+backend/seed/files/** binary
+backend/seed/seed.json -text
+backend/requirements-lite.txt text eol=lf
+Dockerfile text eol=lf
+Dockerfile.full text eol=lf
+render.yaml text eol=lf
+*.sh text eol=lf
