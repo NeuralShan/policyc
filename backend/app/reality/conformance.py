@@ -4,7 +4,9 @@ Algorithm
 ---------
 For each case:
 1. Map case activities → step IDs via the activity_map (None = unmapped).
-2. Walk the SOP process in DFS order and try to match mapped step IDs in sequence.
+2. Replay the events over the process graph: each event advances along the cheapest documented
+   path to its step (steps passed on the way were skipped); unreachable or unmapped events are
+   extra.
 3. Count sync_moves (matched), model_moves (skipped), log_moves (extra).
 4. fitness = sync_moves / (sync_moves + model_moves + log_moves).
 5. Optionally check elapsed time against SLA where timestamps exist.
@@ -47,15 +49,10 @@ def _sla_to_seconds(sla: SLA) -> float | None:
     return sla.max_duration * multipliers.get(sla.unit, 1)
 
 
-def _ordered_step_ids(proc: Process) -> list[str]:
-    """Return a BFS-ordered list of step IDs for the process.
-
-    At decisions, all branches are included in the order they appear (depth-first).
-    This gives an ordered 'expected' sequence for greedy matching.
-    """
-    # Build adjacency over steps AND decisions: node_id → next node ids.
-    on_flow = [s.id for s in proc.steps if not s.off_flow]
-    adj: dict[str, list[str]] = {sid: [] for sid in on_flow}
+def _flow_graph(proc: Process) -> tuple[dict[str, list[str]], set[str], str | None]:
+    """Adjacency over on-flow steps and decisions, the set of step ids, and the entry node."""
+    steps = {s.id for s in proc.steps if not s.off_flow}
+    adj: dict[str, list[str]] = {sid: [] for sid in steps}
     for t in proc.transitions:
         adj.setdefault(t.from_id, []).append(t.to_id)
     for dec in proc.decisions:
@@ -64,27 +61,36 @@ def _ordered_step_ids(proc: Process) -> list[str]:
         for branch in dec.branches:
             if branch.next_step_id:
                 adj.setdefault(dec.id, []).append(branch.next_step_id)
+    return adj, steps, proc.entry()
 
-    start = proc.entry()
-    if start is None:
-        return on_flow
-    visited: list[str] = []
-    seen: set[str] = set()
 
-    def dfs(node_id: str) -> None:
-        if node_id in seen:
-            return
-        seen.add(node_id)
-        visited.append(node_id)
-        for nxt in adj.get(node_id, []):
-            dfs(nxt)
+def _cheapest_path(
+    adj: dict[str, list[str]], steps: set[str], sources: list[str], goal
+) -> list[str] | None:
+    """Path from any source to the first node satisfying ``goal`` that passes the fewest steps.
 
-    dfs(start)
-    step_ids = set(on_flow)
-    ordered = [n for n in visited if n in step_ids]
-    # Add any steps not reachable from start (disconnected sub-processes)
-    ordered.extend(sid for sid in on_flow if sid not in seen)
-    return ordered
+    0-1 BFS: entering a step costs 1, entering a decision costs 0. Sources themselves are free.
+    Returns the nodes after the source, up to and including the goal node.
+    """
+    from collections import deque
+
+    best: dict[str, int] = {n: 0 for n in sources}
+    prev: dict[str, str | None] = {n: None for n in sources}
+    queue = deque(sources)
+    while queue:
+        node = queue.popleft()
+        if goal(node) and prev[node] is not None:
+            path = [node]
+            while prev[path[-1]] is not None and prev[path[-1]] not in sources:
+                path.append(prev[path[-1]])  # type: ignore[arg-type]
+            return path[::-1]
+        for nxt in adj.get(node, []):
+            cost = best[node] + (1 if nxt in steps else 0)
+            if cost < best.get(nxt, 1 << 30):
+                best[nxt] = cost
+                prev[nxt] = node
+                (queue.append if nxt in steps else queue.appendleft)(nxt)
+    return None
 
 
 def _replay_case(
@@ -94,72 +100,76 @@ def _replay_case(
     activity_map: dict[str, str | None],
     sla_map: dict[str, float | None],   # step_id → SLA seconds
 ) -> CaseResult:
-    ordered_steps = _ordered_step_ids(proc)
-    # Map case activities to step_ids (preserve order, keep None)
-    event_step_ids = [activity_map.get(e.activity) for e in events]
+    """Replay one case over the process graph.
 
+    Each mapped event moves the token forward along the cheapest documented path to its step; the
+    steps passed on the way were skipped. An event whose step cannot be reached from the current
+    position (or that maps to no step) is an extra move. At the end, the steps still needed to reach
+    an end of the process count as skipped.
+    """
+    adj, steps, entry = _flow_graph(proc)
     synced: list[str] = []
     skipped: list[str] = []
+    extra: list[str] = []
     sla_breaches: list[str] = []
+    cur: str | None = None
+    prev_ts = None
 
-    case_ptr = 0
-    for step_id in ordered_steps:
-        found = False
-        while case_ptr < len(event_step_ids):
-            if event_step_ids[case_ptr] == step_id:
-                synced.append(step_id)
-                # SLA check: time from previous matched event to this one
-                if sla_map.get(step_id) is not None:
-                    sla_s = sla_map[step_id]
-                    cur_event = events[case_ptr]
-                    # Find previous event with a timestamp
-                    prev_ts = None
-                    for j in range(case_ptr - 1, -1, -1):
-                        if events[j].timestamp is not None:
-                            prev_ts = events[j].timestamp
-                            break
-                    if (
-                        prev_ts is not None
-                        and cur_event.timestamp is not None
-                        and sla_s is not None
-                    ):
-                        elapsed = (cur_event.timestamp - prev_ts).total_seconds()
-                        if elapsed > sla_s:
-                            sla_breaches.append(step_id)
-                case_ptr += 1
-                found = True
-                break
+    for event in events:
+        sid = activity_map.get(event.activity)
+        if sid is None or sid not in steps:
+            extra.append(event.activity)
+            continue
+        if cur is None:
+            if entry is None:
+                path = [sid]
+            elif sid == entry:
+                path = [entry]
             else:
-                case_ptr += 1
+                tail = _cheapest_path(adj, steps, [entry], lambda n, t=sid: n == t)
+                path = [entry, *tail] if tail is not None else None
+        else:
+            path = _cheapest_path(adj, steps, [cur], lambda n, t=sid: n == t)
+        if path is None:
+            extra.append(event.activity)
+            continue
+        skipped.extend(n for n in path[:-1] if n in steps)
+        synced.append(sid)
+        sla_s = sla_map.get(sid)
+        if (
+            sla_s is not None
+            and prev_ts is not None
+            and event.timestamp is not None
+            and (event.timestamp - prev_ts).total_seconds() > sla_s
+        ):
+            sla_breaches.append(sid)
+        cur = sid
+        if event.timestamp is not None:
+            prev_ts = event.timestamp
 
-        if not found:
-            skipped.append(step_id)
-
-    # Extra: activities that mapped to a step but that step wasn't synced
-    synced_set = set(synced)
-    extra_steps = [
-        sid
-        for sid in event_step_ids
-        if sid is not None and sid not in synced_set
-    ]
-    extra_unmapped = [
-        events[i].activity
-        for i, sid in enumerate(event_step_ids)
-        if sid is None
-    ]
+    # Finish the case: steps still required to reach an end of the process.
+    start = cur if cur is not None else entry
+    if start is not None:
+        if not adj.get(start):
+            if cur is None and start in steps:
+                skipped.append(start)
+        else:
+            tail = _cheapest_path(adj, steps, [start], lambda n: not adj.get(n))
+            if tail is not None:
+                if cur is None and start in steps:
+                    skipped.append(start)
+                skipped.extend(n for n in tail if n in steps)
 
     sync_n = len(synced)
-    model_n = len(skipped)
-    log_n = len(extra_steps)
-    total = sync_n + model_n + log_n
+    total = sync_n + len(skipped) + len(extra)
     fitness = sync_n / total if total > 0 else 1.0
 
     return CaseResult(
         case_id=case_id,
         fitness=round(fitness, 4),
         synced=synced,
-        skipped=skipped,
-        extra=list(dict.fromkeys(extra_steps + extra_unmapped)),
+        skipped=list(dict.fromkeys(skipped)),
+        extra=list(dict.fromkeys(extra)),
         sla_breaches=sla_breaches,
         has_no_path=fitness < NO_PATH_THRESHOLD,
     )
@@ -237,7 +247,7 @@ def check_conformance(
                 code="RL002",
                 message=(
                     f"Activity '{activity}' is performed in {count}/{total} "
-                    f"real cases ({rate * 100:.0f}%) but has no matching SOP step"
+                    f"real cases ({rate * 100:.0f}%) but does not fit the documented flow"
                 ),
                 activity=activity,
                 case_count=count,

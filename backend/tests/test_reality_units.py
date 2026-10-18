@@ -269,3 +269,58 @@ def test_reality_service_run_conformance():
     assert report.total_cases == 2
     assert 0.0 <= report.avg_fitness <= 1.0
     assert isinstance(report.rl_findings, list)
+
+
+def _branching_ir() -> SopIR:
+    from app.schemas.ir_sop import CompareCondition, Decision, DecisionBranch, TypedValue, ValueType
+
+    def cmp(op: str) -> CompareCondition:
+        value = TypedValue(value_type=ValueType.NUMBER, number=100.0)
+        return CompareCondition(left="amount", op=op, right=value)
+
+    steps = [
+        Step(id="s01", action="log refund", modal=ModalVerb.SHALL),
+        Step(id="s02", action="verify order", modal=ModalVerb.SHALL),
+        Step(id="s03a", action="lead approves", modal=ModalVerb.SHALL),
+        Step(id="s03b", action="finance approves", modal=ModalVerb.SHALL),
+        Step(id="s04", action="pay refund", modal=ModalVerb.SHALL),
+    ]
+    dec = Decision(
+        id="d01",
+        question="Small?",
+        preceding_step_id="s02",
+        branches=[
+            DecisionBranch(label="small", condition=cmp("lt"), next_step_id="s03a"),
+            DecisionBranch(label="large", condition=cmp("ge"), next_step_id="s03b"),
+        ],
+    )
+    proc = Process(
+        id="p01", name="Refund", document_id="doc1", steps=steps, decisions=[dec],
+        transitions=[
+            Transition(from_id="s01", to_id="s02"),
+            Transition(from_id="s03a", to_id="s04"),
+            Transition(from_id="s03b", to_id="s04"),
+        ],
+    )
+    return SopIR(run_id="r1", document_ids=["doc1"], symbols=SymbolTable(), processes=[proc],
+                 review_status=ReviewStatus.APPROVED)
+
+
+def test_conformance_follows_one_branch_of_a_decision():
+    ir = _branching_ir()
+    csv = (
+        b"case_id,activity\n"
+        b"A,log refund\nA,verify order\nA,finance approves\nA,pay refund\n"
+        b"B,log refund\nB,lead approves\nB,pay refund\n"
+        b"C,log refund\nC,verify order\n"
+    )
+    el = _event_log_from_csv(csv)
+    amap = {"log refund": "s01", "verify order": "s02", "lead approves": "s03a",
+            "finance approves": "s03b", "pay refund": "s04"}
+    res = {r.case_id: r for r in check_conformance(el, ir, amap).case_results}
+    # The other branch is not "skipped": a case only has to follow one path.
+    assert res["A"].fitness == 1.0 and res["A"].skipped == []
+    # B skipped verification, then continued normally.
+    assert res["B"].skipped == ["s02"] and res["B"].extra == []
+    # C stopped half-way: approving and paying are still owed.
+    assert "s04" in res["C"].skipped and res["C"].fitness < 1.0
