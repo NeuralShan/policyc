@@ -36,7 +36,7 @@ export function SignInScreen() {
       <Logo size={56} />
       <h1 className="mt-6 text-3xl font-bold tracking-tight text-slate-900">PolicyC</h1>
       <p className="mt-3 text-lg text-slate-700">
-        Software gets compiled and tested before it ships. The procedures that run banks, factories and hospitals never do.{" "}
+        Software gets compiled and tested before it ships. The procedures that are running behind banks, factories and hospitals never do.{" "}
         <span className="font-semibold text-indigo-700">PolicyC compiles them.</span>
       </p>
       <div className="mt-8 flex flex-col items-center gap-3">

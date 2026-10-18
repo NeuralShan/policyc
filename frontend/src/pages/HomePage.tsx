@@ -158,7 +158,7 @@ export function HomePage() {
             <span className="block text-slate-500">Your procedures never did.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-slate-700 sm:text-lg">
-            The procedures that run banks, factories and hospitals never do. <strong className="font-semibold text-indigo-700">PolicyC compiles them</strong>:
+            The procedures that are running behind banks, factories and hospitals never do. <strong className="font-semibold text-indigo-700">PolicyC compiles them</strong>:
             it finds the dead ends, contradictions and untestable clauses in your SOPs before an auditor, or an incident, does.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

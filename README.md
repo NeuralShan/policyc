@@ -1,6 +1,6 @@
 # PolicyC: a compiler and debugger for business procedures
 
-> **Software gets compiled and tested before it ships. The procedures that run banks, factories and
+> **Software gets compiled and tested before it ships. The procedures that are running behind banks, factories and
 > hospitals never do. PolicyC compiles them.**
 >
 > Upload a Standard Operating Procedure. Gemini turns it into an executable process model; a

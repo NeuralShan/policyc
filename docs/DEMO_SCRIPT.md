@@ -2,12 +2,12 @@
 
 Record at 1080p, browser zoom 110-125%, dark or light theme (light reads better on video). Use the
 **precomputed samples** so nothing waits on a model. Keep the cursor slow. Add captions.
-Before recording: open the deployed URL once so the Space is awake, sign in with Google, and click
+Before recording: open the deployed URL once so the engine is awake, sign in with Google, and click
 through the Expense sample so everything is cached in the browser.
 
 | Time | Screen | Say (about) |
 |---|---|---|
-| 0:00-0:15 | Home page hero | "Software is compiled and tested before it ships. The procedures that run banks, factories and hospitals never are. PolicyC compiles them." |
+| 0:00-0:15 | Home page hero | "Software is compiled and tested before it ships. The procedures that are running behind banks, factories and hospitals never are. PolicyC compiles them." |
 | 0:15-0:35 | Click **Try it** on *Employee Expense Reimbursement* → workspace opens: document on the left, flowchart in the middle, problems at the bottom, health ring top-left | "Gemini reads the policy PDF into a process model. Every box cites the clause it came from. A deterministic engine, not the model, then tests it." |
 | 0:35-1:10 | Click the **Missing branch** problem. Clause 4.1 highlights, the decision node pulses, counterexample chip reads `amount = 10000, requester_role = other` | "Claims below ten thousand and above ten thousand: what about exactly ten thousand? The solver found the gap and proved it with a failing case." |
 | 1:10-1:30 | Click the **No eligible approver** problem → **Show trace**: the dot walks to *Approve own claims* and stops red | "The Finance Head approves their own claims, but nobody may approve their own claim. Their claim can never be completed. Every finding is a proof, not an AI opinion." |

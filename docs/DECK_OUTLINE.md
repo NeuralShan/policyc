@@ -4,7 +4,7 @@ Fill the bracketed numbers from the README "Evaluation" table before exporting. 
 from the deployed app (home, workspace, fix dialog, trace) rather than mock-ups.
 
 1. **Title.** PolicyC: a compiler and debugger for business procedures. One line: *"Software is
-   tested before it ships. The procedures that run banks, factories and hospitals never are."*
+   tested before it ships. The procedures that are running behind banks, factories and hospitals never are."*
    Team, links (live URL, GitHub, video).
 2. **The problem.** Procedures are programs executed by people, and they have bugs. Three tiny
    examples: the gap at exactly INR 10,000; the Finance Head who must approve their own claim; a

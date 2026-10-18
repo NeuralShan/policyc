@@ -19,7 +19,7 @@ export function AboutPage() {
         <Badge tone="indigo" icon="info">About / How it works</Badge>
         <h1 className="text-balance text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Gemini translates. The engine proves.</h1>
         <p className="text-lg leading-relaxed text-slate-700">
-          Software gets compiled and tested before it ships. The procedures that run banks, factories and hospitals never do. PolicyC compiles them.
+          Software gets compiled and tested before it ships. The procedures that are running behind banks, factories and hospitals never do. PolicyC compiles them.
         </p>
       </header>
 
