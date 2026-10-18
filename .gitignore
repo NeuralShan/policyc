@@ -25,3 +25,8 @@ golden/private/
 # Local logs
 *.log
 *.err
+
+# Local deploy state (per developer)
+.firebase/
+.firebaserc
+frontend/.env.production
